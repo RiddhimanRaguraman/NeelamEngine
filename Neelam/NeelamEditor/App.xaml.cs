@@ -1,14 +1,21 @@
-﻿using System.Configuration;
-using System.Data;
 using System.Windows;
 
 namespace NeelamEditor
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
+        private void OnStartup(object sender, StartupEventArgs e)
+        {
+            var projectBrowser = new ProjectBrowserDialog();
+            if (projectBrowser.ShowDialog() == false)
+            {
+                Shutdown();
+            }
+            else
+            {
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
+            }
+        }
     }
-
 }

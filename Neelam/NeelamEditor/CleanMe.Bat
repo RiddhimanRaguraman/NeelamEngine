@@ -15,6 +15,8 @@ REM cleanup root director
     if exist x64 rmdir /S /Q x64
     if exist ipch rmdir /S /Q ipch
     if exist .vs rmdir /S /Q .vs
+    if exist obj rmdir /S /Q obj
+    if exist bin rmdir /S /Q bin
 
 
 
