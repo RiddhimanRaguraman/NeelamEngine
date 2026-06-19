@@ -1,19 +1,38 @@
-﻿<UserControl x:Class="NeelamEditor.GameProject.OpenProjectView"
+<UserControl x:Class="NeelamEditor.GameProject.OpenProjectView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:NeelamEditor.GameProject"
              mc:Ignorable="d"  Width="800"
              d:DesignHeight="450" d:DesignWidth="800"
              Background="{StaticResource SurfaceBrush}">
+    <UserControl.DataContext>
+        <local:OpenProject/>
+    </UserControl.DataContext>
 
     <StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-            <ListBox Width="195" Height="280"/>
+            <ListBox Width="195" Height="280"
+                     ItemsSource="{Binding Projects}" x:Name="projectsListBox"
+                     SelectedIndex="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="{Binding Icon}" Width="48" Height="48" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding ProjectName}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
             <Border Width="400" Height="280" Margin="5,0,0,0"
                     Background="{StaticResource InputBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"/>
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <Image Source="{Binding Path=SelectedItem.ScreenShot, ElementName=projectsListBox}"
+                       Stretch="UniformToFill"/>
+            </Border>
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
