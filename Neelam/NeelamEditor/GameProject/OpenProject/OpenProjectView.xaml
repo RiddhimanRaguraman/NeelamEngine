@@ -5,18 +5,23 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:NeelamEditor.GameProject"
              mc:Ignorable="d"  Width="800"
-             d:DesignHeight="450" d:DesignWidth="800">
-    <StackPanel Background="AliceBlue">
+             d:DesignHeight="450" d:DesignWidth="800"
+             Background="{StaticResource SurfaceBrush}">
+
+    <StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-            <ListBox Width="195" Height="250"/>
-            <Border Width="400" Height="250" Margin="5,0,0,0"/>
+            <ListBox Width="195" Height="280"/>
+            <Border Width="400" Height="280" Margin="5,0,0,0"
+                    Background="{StaticResource InputBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"/>
         </StackPanel>
-     
-        
+
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
                   Margin="0,30,0,0">
-            <Button Content="Open" Width="96" IsDefault="True"/>
-            <Button Content="Exit" Width="96" Margin="30,0,0,0" IsCancel="True"/>
+            <Button Content="Open" Width="96" IsDefault="True"
+                    Style="{StaticResource PrimaryButtonStyle}"/>
+            <Button Content="Exit" Width="96" Margin="30,0,0,0" IsCancel="True"
+                    Style="{StaticResource SecondaryButtonStyle}"/>
         </StackPanel>
     </StackPanel>
 </UserControl>

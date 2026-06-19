@@ -32,7 +32,7 @@ namespace NeelamEditor.GameProject
 
     class NewProject : ViewModelBase
     {
-        // TODO: Get path from user installation 
+        //Data Members and its setters and getters
         private readonly string _templatePath = @"..\..\..\NeelamEditor\ProjectTemplates";
         private string _Projectname = "NewProject";
         public string ProjectName
