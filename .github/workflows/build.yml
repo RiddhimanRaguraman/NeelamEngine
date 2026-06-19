@@ -44,7 +44,7 @@ jobs:
 
       - name: Build (Release | x64)
         working-directory: Neelam
-        run: msbuild Neelam.sln /p:Configuration=Release /p:Platform=x64 /m /v:minimal /nologo
+        run: msbuild Neelam.sln /restore /p:Configuration=Release /p:Platform=x64 /m /v:minimal /nologo
 
       - name: Upload editor build
         uses: actions/upload-artifact@v4

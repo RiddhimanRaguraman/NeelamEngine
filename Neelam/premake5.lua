@@ -6,7 +6,7 @@ workspace "Neelam"
 	location "."
 
 	filter "system:windows"
-		systemversion "10.0.22621.0"
+		systemversion "latest"
 	filter {}
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
