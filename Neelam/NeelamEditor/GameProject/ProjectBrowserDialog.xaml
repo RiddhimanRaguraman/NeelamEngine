@@ -5,19 +5,47 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:NeelamEditor.GameProject"
         mc:Ignorable="d" ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
-        Title="Project Browser" Height="600" Width="800">
+        Title="Project Browser" Height="600" Width="800"
+        WindowStyle="None" AllowsTransparency="False" Background="#2D2D30">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32"
+                      ResizeBorderThickness="0"
+                      GlassFrameThickness="0"
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
             <RowDefinition Height="auto" />
             <RowDefinition />
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
+
+        <!-- Custom title bar -->
+        <Border Grid.Row="0" Background="#1E1E1E">
+            <Grid>
+                <TextBlock Text="Project Browser"
+                           Foreground="#DDDDDD"
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0"/>
+                <Button Content="X"
+                        HorizontalAlignment="Right"
+                        Width="46" Height="32"
+                        Background="Transparent"
+                        Foreground="White"
+                        BorderThickness="0"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Click="OnCloseButton_Click"/>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
             <ToggleButton Content="Open Project" x:Name="openProjectButton" FontSize="32"
                           Click="OnToggleButton_Click" IsChecked="True"/>
             <ToggleButton Content="Create Project" x:Name="createProjectButton" FontSize="32" Margin="30,0,0,0"
                           Click="OnToggleButton_Click" IsChecked="False"/>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" Grid.Row="1" x:Name="browsercontent">
+        <StackPanel Orientation="Horizontal" Grid.Row="2" x:Name="browsercontent">
             <local:OpenProjectView />
             <local:NewProjectView /> 
 

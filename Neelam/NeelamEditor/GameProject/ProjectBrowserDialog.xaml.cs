@@ -46,5 +46,10 @@ namespace NeelamEditor
                 createProjectButton.IsChecked = true;
             }
         }
+
+        private void OnCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
     }
 }
