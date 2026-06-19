@@ -1,18 +1,43 @@
 name: release
 
-# Triggers on pushed tags like v0.1.0, v1.2.3, etc.
+# Every push to main triggers a release (when .github/actions.enabled is 'true').
 # Also runnable manually from the Actions tab for testing the release path.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
-# We need write permission on the repo contents to create a GitHub Release.
+# Cancel an in-flight run if a newer push lands on main.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+# Needed to create GitHub Releases.
 permissions:
   contents: write
 
 jobs:
+  # Cheap Linux gate. Reads .github/actions.enabled and decides whether the
+  # expensive Windows job should run. Costs ~5 seconds, billed at 1x.
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/actions.enabled
+          sparse-checkout-cone-mode: false
+      - id: check
+        run: |
+          flag=$(tr -d '[:space:]' < .github/actions.enabled 2>/dev/null || echo "false")
+          echo "Flag value: '$flag'"
+          echo "enabled=$flag" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: preflight
+    if: needs.preflight.outputs.enabled == 'true'
     runs-on: windows-latest
     timeout-minutes: 25
 
@@ -49,7 +74,7 @@ jobs:
         run: msbuild Neelam.sln /restore /p:Configuration=Release /p:Platform=x64 /m /v:minimal /nologo
 
       # Step 3: publish the editor as a self-contained, single-folder app.
-      # This bundles the .NET 8 Desktop Runtime, so the user does NOT need
+      # This bundles the .NET 8 Desktop Runtime, so the end user does NOT need
       # to install anything before running NeelamEditor.exe.
       - name: Publish editor (self-contained, win-x64)
         working-directory: Neelam/NeelamEditor
@@ -67,18 +92,22 @@ jobs:
       - name: Copy NeelamEngine.dll into publish folder
         shell: pwsh
         run: |
-          $engineDll = Get-ChildItem -Recurse -Filter NeelamEngine.dll `
-            -Path Neelam/bin/Release-windows-x64 | Select-Object -First 1
+          $engineDll = Get-ChildItem -Recurse -Filter NeelamEngine.dll -Path Neelam |
+            Where-Object { $_.FullName -match 'Release' } |
+            Select-Object -First 1
           if (-not $engineDll) {
-            Write-Error "NeelamEngine.dll not found in Neelam/bin/Release-windows-x64"
+            Write-Host "::group::All .dll files under Neelam/ (diagnostic)"
+            Get-ChildItem -Recurse -Filter *.dll -Path Neelam | Format-Table FullName, Length
+            Write-Host "::endgroup::"
+            Write-Error "NeelamEngine.dll not found anywhere under Neelam/"
             exit 1
           }
           Copy-Item $engineDll.FullName "${{ github.workspace }}/publish/"
           Write-Host "Copied $($engineDll.FullName) -> publish/"
 
       # Step 5: also copy the ProjectTemplates folder so the editor can find
-      # its templates at runtime (the current _templatePath is dev-time only,
-      # but the templates need to ship alongside the exe).
+      # its templates at runtime (the dev-time _templatePath uses ..\..\..\
+      # which won't resolve once the editor is installed somewhere else).
       - name: Copy ProjectTemplates into publish folder
         shell: pwsh
         run: |
@@ -91,27 +120,26 @@ jobs:
             Write-Warning "ProjectTemplates folder not found at $src"
           }
 
-      # Step 6: zip the whole publish folder. Tag name (or 'manual' for
-      # workflow_dispatch) ends up in the archive name.
-      - name: Create ZIP archive
+      # Step 6: auto-generate a version from the date + short SHA. No git tag
+      # required — each push to main gets its own release like
+      # "v2026.06.18-abc1234".
+      - name: Compute version + zip
         id: zip
         shell: pwsh
         run: |
-          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') {
-            $env:GITHUB_REF_NAME
-          } else {
-            "manual-$($env:GITHUB_SHA.Substring(0,7))"
-          }
+          $date = Get-Date -Format 'yyyy.MM.dd'
+          $shortSha = $env:GITHUB_SHA.Substring(0, 7)
+          $version = "v$date-$shortSha"
           $zipName = "NeelamEditor-$version-win-x64.zip"
           Compress-Archive -Path publish/* -DestinationPath $zipName
-          "zip_path=$zipName"   | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "version=$version"    | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "zip_path=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "version=$version"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Built $zipName"
 
-      # Step 7: create the GitHub Release and attach the ZIP.
-      # softprops/action-gh-release handles both creating a new release for
-      # tag pushes and surfacing a generated release for manual runs.
+      # Step 7: publish to the Releases page. Triggered on push to main; on
+      # manual workflow_dispatch runs we still publish so you can grab the
+      # release link directly.
       - name: Create GitHub Release
-        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           name: NeelamEditor ${{ steps.zip.outputs.version }}
@@ -120,13 +148,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-
-      # On manual runs, just upload the ZIP as an artifact so you can grab it
-      # without creating a real release.
-      - name: Upload ZIP as artifact (manual runs)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
-        with:
-          name: NeelamEditor-${{ steps.zip.outputs.version }}
-          path: ${{ steps.zip.outputs.zip_path }}
-          retention-days: 14
