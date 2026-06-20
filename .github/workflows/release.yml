@@ -120,21 +120,23 @@ jobs:
             Write-Warning "ProjectTemplates folder not found at $src"
           }
 
-      # Step 6: auto-generate a version from the date + short SHA. No git tag
-      # required — each push to main gets its own release like
-      # "v2026.06.18-abc1234".
+      # Step 6: zip the publish folder. Version is read from .github/version —
+      # bump that file to mark a new release. If the tag already exists on
+      # GitHub the release step below will fail; that's the signal to bump.
       - name: Compute version + zip
         id: zip
         shell: pwsh
         run: |
-          $date = Get-Date -Format 'yyyy.MM.dd'
-          $shortSha = $env:GITHUB_SHA.Substring(0, 7)
-          $version = "v$date-$shortSha"
+          $version = (Get-Content .github/version -Raw).Trim()
+          if (-not $version) {
+            Write-Error ".github/version is missing or empty."
+            exit 1
+          }
           $zipName = "NeelamEditor-$version-win-x64.zip"
           Compress-Archive -Path publish/* -DestinationPath $zipName
           "zip_path=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "version=$version"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "Built $zipName"
+          Write-Host "Built $zipName (version: $version)"
 
       # Step 7: publish to the Releases page. Triggered on push to main; on
       # manual workflow_dispatch runs we still publish so you can grab the
@@ -142,7 +144,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: NeelamEditor ${{ steps.zip.outputs.version }}
+          name: ${{ steps.zip.outputs.version }}
           tag_name: ${{ steps.zip.outputs.version }}
           files: ${{ steps.zip.outputs.zip_path }}
           draft: false
