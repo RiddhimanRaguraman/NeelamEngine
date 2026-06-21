@@ -18,6 +18,13 @@
                      SelectedIndex="0"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <EventSetter Event="MouseDoubleClick" Handler="ListBoxItem_MouseDoubleClick">
+                        
+                        </EventSetter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
@@ -38,7 +45,8 @@
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
                   Margin="0,30,0,0">
             <Button Content="Open" Width="96" IsDefault="True"
-                    Style="{StaticResource PrimaryButtonStyle}"/>
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Click="OnOpen_Button_Click"/>
             <Button Content="Exit" Width="96" Margin="30,0,0,0" IsCancel="True"
                     Style="{StaticResource SecondaryButtonStyle}"/>
         </StackPanel>

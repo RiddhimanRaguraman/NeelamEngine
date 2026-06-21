@@ -13,7 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace NeelamEditor
+namespace NeelamEditor.GameProject
 {
     /// <summary>
     /// Interaction logic for Window1.xaml

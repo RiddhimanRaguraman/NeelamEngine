@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using NeelamEditor.Common;
 
 namespace NeelamEditor.GameProject
 {
@@ -28,7 +29,7 @@ namespace NeelamEditor.GameProject
 
         [DataMember]
         public Project Project { get; private set; }
-
+        public bool IsActive => Project.ActiveScene == this;
         public Scene(Project project, string name)
         {
             Debug.Assert(project != null);

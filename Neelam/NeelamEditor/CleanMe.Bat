@@ -27,6 +27,7 @@ REM cleanup root director
     if exist *.sdf del /F /S *.sdf
     if exist *.suo del /F /S *.suo
     if exist *.db del /F *.db
+
   
 REM walk through subdirectories delete Release & Debug subs
 
