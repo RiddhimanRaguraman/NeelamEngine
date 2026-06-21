@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,28 +15,42 @@ using NeelamEditor.Utilities;
 
 namespace NeelamEditor.GameProject
 {
+    // Project-creation template loaded from ProjectTemplates\<Name>\template.xml.
+    // [DataMember] fields are persisted; the others (Icon, paths) are populated
+    // at runtime from sibling files in the template folder.
     [DataContract]
     public class ProjectTemplate
-    { 
-        [DataMember]
-        public string ProjectType { get; set; } 
-        [DataMember]
-        public string ProjectFile { get; set; }
-        [DataMember]
-        public List<string> Folders { get; set; }
+    {
+        // Human-readable name shown in the template list (e.g. "Empty Project").
+        [DataMember] public string ProjectType { get; set; }
+
+        // Filename of the .neelam manifest seed inside the template folder.
+        [DataMember] public string ProjectFile { get; set; }
+
+        // Folder names to create inside the new project (e.g. .neelam, Content, GameCode).
+        [DataMember] public List<string> Folders { get; set; }
+
+        // Runtime-only: bytes of the template's Icon.png and Screenshot.png.
         public byte[] Icon { get; set; }
         public byte[] Screenshot { get; set; }
+
+        // Runtime-only: absolute paths to the template's assets, resolved at load.
         public string IconFilePath { get; set; }
         public string ScreenshotFilePath { get; set; }
         public string ProjectFilePath { get; set; }
     }
 
 
+    // View-model for the Create Project dialog. Holds form state, validates it,
+    // and creates the project folder + files when the user confirms.
     class NewProject : ViewModelBase
     {
-        //Data Members and its setters and getters
+        // Dev-time relative path to the template folder. Will need to resolve from
+        // installed location before shipping.
         private readonly string _templatePath = @"..\..\..\NeelamEditor\ProjectTemplates";
+
         private string _Projectname = "NewProject";
+        // Project name entered in the Name field. Triggers validation on change.
         public string ProjectName
         {
             get => _Projectname;
@@ -52,6 +66,8 @@ namespace NeelamEditor.GameProject
         }
 
         private string _Projectpath = $@"{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}\NeelamProjects\";
+        // Parent folder under which the new project's own folder will be created.
+        // Triggers validation on change.
         public string ProjectPath
         {
             get => _Projectpath;
@@ -65,8 +81,9 @@ namespace NeelamEditor.GameProject
                 }
             }
         }
-        
+
         private bool _isValid;
+        // Bound to the Create button's IsEnabled. Set by ValidateProjectPath.
         public bool IsValid
         {
             get => _isValid;
@@ -81,6 +98,7 @@ namespace NeelamEditor.GameProject
         }
 
         private string _errorMsg;
+        // Shown beneath the form. Empty string means no error.
         public string ErrorMsg
         {
             get => _errorMsg;
@@ -94,9 +112,12 @@ namespace NeelamEditor.GameProject
             }
         }
 
+        // Templates loaded from disk in the constructor.
         private ObservableCollection<ProjectTemplate> _projectTemplates = new ObservableCollection<ProjectTemplate>();
         public ReadOnlyObservableCollection<ProjectTemplate> ProjectTemplates { get; }
 
+        // Runs on every Name/Path change. Sets ErrorMsg + IsValid based on
+        // emptiness, illegal characters, or a non-empty target folder.
         private bool ValidateProjectPath()
         {
             var path = ProjectPath;
@@ -133,6 +154,8 @@ namespace NeelamEditor.GameProject
             return IsValid;
         }
 
+        // Materializes a new project on disk from the chosen template. Returns
+        // the project's folder path on success, empty string on failure/invalid.
         public string CreateProject(ProjectTemplate template)
         {
             ValidateProjectPath();
@@ -144,23 +167,28 @@ namespace NeelamEditor.GameProject
             var path = $@"{ProjectPath}{ProjectName}\";
             try
             {
+                // Create the project root and the folders the template asks for.
                 if(!Directory.Exists(path)) Directory.CreateDirectory(path);
                 foreach (var folder in template.Folders)
                 {
                     Directory.CreateDirectory(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path), folder)));
                 }
+
+                // The .neelam metadata folder is hidden so users don't poke at it.
                 var dirinfo = new DirectoryInfo(path + @".neelam\");
                 dirinfo.Attributes |= FileAttributes.Hidden;
                 File.Copy(template.IconFilePath, Path.GetFullPath(Path.Combine(dirinfo.FullName, "Icon.png")));
                 File.Copy(template.ScreenshotFilePath, Path.GetFullPath(Path.Combine(dirinfo.FullName, "Screenshot.png")));
 
+                // Read the template's project.neelam, substitute the name/path placeholders,
+                // and write it to the new project's root.
                 var projectXml = File.ReadAllText(template.ProjectFilePath);
                 projectXml = string.Format(projectXml, ProjectName, ProjectPath);
                 var projectPath = Path.GetFullPath(Path.Combine(path + $"{ProjectName}{Project.Extension}"));
                 File.WriteAllText(projectPath, projectXml);
 
 
-                return path; 
+                return path;
             }
             catch (Exception ex)
             {
@@ -170,6 +198,8 @@ namespace NeelamEditor.GameProject
             }
         }
 
+        // Discovers every template.xml under _templatePath, deserializes each,
+        // pulls in its Icon/Screenshot bytes, and exposes them via ProjectTemplates.
         public NewProject()
         {
             ProjectTemplates = new ReadOnlyObservableCollection<ProjectTemplate>(_projectTemplates);

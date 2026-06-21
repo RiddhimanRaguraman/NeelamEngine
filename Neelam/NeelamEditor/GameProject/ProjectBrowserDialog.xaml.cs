@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,9 +15,7 @@ using System.Windows.Shapes;
 
 namespace NeelamEditor.GameProject
 {
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
+    // Modal shell shown at startup. Hosts Open / Create tabs and a custom title bar.
     public partial class ProjectBrowserDialog : Window
     {
         public ProjectBrowserDialog()
@@ -25,6 +23,8 @@ namespace NeelamEditor.GameProject
             InitializeComponent();
         }
 
+        // Tab switcher. Slides the content row by ±800px to swap between the
+        // OpenProjectView and NewProjectView; the parent grid clips the overflow.
         private void OnToggleButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender == openProjectButton)
@@ -47,6 +47,7 @@ namespace NeelamEditor.GameProject
             }
         }
 
+        // Custom title-bar close button (system chrome is hidden via WindowChrome).
         private void OnCloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();

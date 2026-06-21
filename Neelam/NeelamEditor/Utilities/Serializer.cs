@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -9,8 +9,10 @@ using System.Threading.Tasks;
 
 namespace NeelamEditor.Utilities
 {
+    // Thin DataContractSerializer wrapper. T must be [DataContract]-decorated.
     public static class Serializer
     {
+        // Serialize instance to XML at the given path. Overwrites existing file.
         public static void ToFile<T>(T instance, string path)
         {
             try
@@ -26,6 +28,7 @@ namespace NeelamEditor.Utilities
             }
         }
 
+        // Deserialize an instance of T from path. Returns default(T) on failure.
         internal static T FromFile<T>(string path)
         {
             try

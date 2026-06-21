@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,6 +9,7 @@ using NeelamEditor.Common;
 
 namespace NeelamEditor.GameProject
 {
+    // One scene inside a Project. Currently just a Name; will grow as the scene graph builds.
     [DataContract]
     public class Scene : ViewModelBase
     {
@@ -27,9 +28,14 @@ namespace NeelamEditor.GameProject
             }
         }
 
+        // Back-reference to the owning project. Forms a cycle — handled by
+        // ViewModelBase's IsReference=true so the serializer doesn't recurse.
         [DataMember]
         public Project Project { get; private set; }
+
+        // True if this scene is the project's currently-active one.
         public bool IsActive => Project.ActiveScene == this;
+
         public Scene(Project project, string name)
         {
             Debug.Assert(project != null);
