@@ -23,6 +23,7 @@ This cleans previous output and runs premake to produce the IDE files (`Neelam\N
 
 > **Using a different IDE?** Open `Neelam\UberBuildMe.Bat` and change the premake action on the last line.
 > Supported actions include `vs2022`, `vs2019`, `vs2017`, `gmake2`, `codelite`, `xcode4`. See [premake docs](https://premake.github.io/docs/Using-Premake/) for the full list.
+> Remember the project needs MSbuild to run the csproj
 
 ### Compile
 
