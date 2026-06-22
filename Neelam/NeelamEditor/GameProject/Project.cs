@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Windows;
+using System.Windows.Input;
 using NeelamEditor.Common;
 using NeelamEditor.Utilities;
 
@@ -48,6 +49,26 @@ namespace NeelamEditor.GameProject
             }
         }
 
+        public static UndoRedo undoredo { get; } = new UndoRedo();
+
+        // Commands the UI binds to. Set in OnDeserialized so they survive both
+        // first-time construction and round-tripping through the serializer.
+        public ICommand AddScene { get; private set; }
+        public ICommand RemoveScene { get; private set; }
+
+        // Mutating helpers the commands wrap. Keep these private so all scene
+        // mutations route through the undo-redo system in the command bodies.
+        private void AddSceneInternal(string sceneName)
+        {
+            Debug.Assert(!string.IsNullOrEmpty(sceneName.Trim()));
+            _scenes.Add(new Scene(this, sceneName));
+        }
+
+        private void RemoveSceneInternal(Scene scene)
+        {
+            Debug.Assert(_scenes.Contains(scene));
+            _scenes.Remove(scene);
+        }
         // Load a project from disk.
         public static Project Load(string file)
         {
@@ -68,16 +89,43 @@ namespace NeelamEditor.GameProject
         }
 
         // Called by the serializer after deserialization completes; rebuilds the
-        // ReadOnlyObservableCollection wrapper since it isn't persisted itself.
+        // ReadOnlyObservableCollection wrapper since it isn't persisted itself,
+        // and wires up the scene-mutation commands with undo/redo support.
         [OnDeserialized]
-        private void OnDeserialized (StreamingContext context)
+        private void OnDeserialized(StreamingContext context)
         {
-            if(_scenes != null)
+            if (_scenes != null)
             {
                 Scenes = new ReadOnlyObservableCollection<Scene>(_scenes);
                 OnPropertyChanged(nameof(Scenes));
             }
             ActiveScene = Scenes.FirstOrDefault(x => x.IsActive);
+
+            // Append a new scene; undo removes it, redo re-inserts at the same index.
+            AddScene = new RelayCommand<object>(x =>
+            {
+                AddSceneInternal($"New Scene {_scenes.Count}");
+                var newScene = _scenes.Last();
+                var sceneIndex = _scenes.Count - 1;
+
+                undoredo.Add(new UndoRedoAction(
+                    () => RemoveSceneInternal(newScene),
+                    () => _scenes.Insert(sceneIndex, newScene),
+                    $"Add {newScene.Name}"));
+            });
+
+            // Remove a scene; undo re-inserts at the original position. Disabled
+            // when the target is the project's active scene.
+            RemoveScene = new RelayCommand<Scene>(x =>
+            {
+                var sceneIndex = _scenes.IndexOf(x);
+                RemoveSceneInternal(x);
+
+                undoredo.Add(new UndoRedoAction(
+                    () => _scenes.Insert(sceneIndex, x),
+                    () => RemoveSceneInternal(x),
+                    $"Remove {x.Name}"));
+            }, x => !x.IsActive);
         }
 
         // Ctor used when creating a brand-new project (not loading from disk).

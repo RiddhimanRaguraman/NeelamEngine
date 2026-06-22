@@ -24,6 +24,13 @@
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
     </Style>
 
+    <!-- Minimal Expander: just blend into the surface palette, default chrome otherwise. -->
+    <Style TargetType="{x:Type Expander}">
+        <Setter Property="Background"  Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="Foreground"  Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    </Style>
+
     <!-- ============================================================ -->
     <!-- TextBox: InputBrush fill, BorderBrush outline.                -->
     <!-- ============================================================ -->

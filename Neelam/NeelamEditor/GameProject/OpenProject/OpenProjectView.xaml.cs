@@ -22,6 +22,15 @@ namespace NeelamEditor.GameProject
         public OpenProjectView()
         {
             InitializeComponent();
+
+            // After the control loads, push keyboard focus to the selected row
+            // so Enter / arrow keys work without the user having to click first.
+            Loaded += (s, e) =>
+            {
+                var item = projectsListBox.ItemContainerGenerator
+                    .ContainerFromIndex(projectsListBox.SelectedIndex) as ListBoxItem;
+                item?.Focus();
+            };
         }
 
         // Open button click handler.
