@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:gp="clr-namespace:NeelamEditor.GameProject"
              xmlns:local="clr-namespace:NeelamEditor.Editors"
              xmlns:utls="clr-namespace:NeelamEditor.Utilities"
              mc:Ignorable="d"
@@ -39,7 +40,7 @@
             <!-- Vertical splitter between the two columns -->
             <GridSplitter Grid.Column="1" Width="5"
                           HorizontalAlignment="Left" VerticalAlignment="Stretch"/>
-            <utls:UndoRedoView DataContext="{Binding UndoRedo}" Grid.Row="1"/>
+            <utls:UndoRedoView DataContext="{x:Static gp:Project.undoredo}" Grid.Row="2"/>
 
             <!-- Right column: split top/bottom -->
             <Grid Grid.Column="1" Margin="5,0,0,0">
