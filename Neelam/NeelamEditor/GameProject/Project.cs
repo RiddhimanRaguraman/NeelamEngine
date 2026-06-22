@@ -53,6 +53,8 @@ namespace NeelamEditor.GameProject
 
         // Commands the UI binds to. Set in OnDeserialized so they survive both
         // first-time construction and round-tripping through the serializer.
+        public ICommand Undo { get; private set; }
+        public ICommand Redo{ get; private set; }
         public ICommand AddScene { get; private set; }
         public ICommand RemoveScene { get; private set; }
 
@@ -126,7 +128,12 @@ namespace NeelamEditor.GameProject
                     () => RemoveSceneInternal(x),
                     $"Remove {x.Name}"));
             }, x => !x.IsActive);
+
+            Undo = new RelayCommand<object>(x => undoredo.Undo());
+            Redo = new RelayCommand<object>(x => undoredo.Redo());
+        
         }
+
 
         // Ctor used when creating a brand-new project (not loading from disk).
         // Manually invokes OnDeserialized to set up the read-only wrapper.
