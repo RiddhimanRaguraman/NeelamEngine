@@ -7,16 +7,8 @@ namespace NeelamEditor
     {
         private void OnStartup(object sender, StartupEventArgs e)
         {
-            var projectBrowser = new ProjectBrowserDialog();
-            if (projectBrowser.ShowDialog() == false)
-            {
-                Shutdown();
-            }
-            else
-            {
-                var mainWindow = new MainWindow();
-                mainWindow.Show();
-            }
+            var mainWindow = new MainWindow();
+            mainWindow.Show();
         }
     }
 }

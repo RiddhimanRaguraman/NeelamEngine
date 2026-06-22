@@ -7,6 +7,7 @@ namespace NeelamEditor
 {
     public partial class MainWindow : Window
     {
+        // DataContext is injected by App.OnStartup after the project browser closes.
         public MainWindow()
         {
             InitializeComponent();
@@ -19,6 +20,7 @@ namespace NeelamEditor
             this.Loaded -= OnMainWindowLoaded;
             OpenProjectBrowserDialog();
         }
+        // Tear the active project down on shell close.
         private void OnMainWindowClosing(object sender, CancelEventArgs e)
         {
             Closing -= OnMainWindowClosing;

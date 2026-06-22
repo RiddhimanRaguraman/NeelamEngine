@@ -77,6 +77,7 @@ namespace NeelamEditor.GameProject
                 Scenes = new ReadOnlyObservableCollection<Scene>(_scenes);
                 OnPropertyChanged(nameof(Scenes));
             }
+            ActiveScene = Scenes.FirstOrDefault(x => x.IsActive);
         }
 
         // Ctor used when creating a brand-new project (not loading from disk).
