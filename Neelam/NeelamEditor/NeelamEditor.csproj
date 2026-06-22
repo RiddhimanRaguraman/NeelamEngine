@@ -11,6 +11,17 @@
     <BaseOutputPath>..\x64\</BaseOutputPath>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+
+    <!-- File-properties metadata. Won't bypass SmartScreen (only signing does),
+         but populates the Details tab in Explorer with real info instead of blanks. -->
+    <AssemblyTitle>NeelamEditor</AssemblyTitle>
+    <Product>NeelamEngine</Product>
+    <Company>Neelam</Company>
+    <Description>Game editor for NeelamEngine.</Description>
+    <Copyright>Copyright © Riddhiman Raguraman 2026</Copyright>
+    <Version>0.1.9</Version>
+    <FileVersion>0.1.9</FileVersion>
+    <AssemblyVersion>0.1.9.0</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
