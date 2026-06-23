@@ -4,7 +4,7 @@
 	<Name>{0}</Name>
 	<Path>{1}</Path>
 	<Scenes>
-		<Scene z:Id="i2">
+		<Scene z:Id="i2"><GameEntities/>
 			<IsActive>true</IsActive>
 			<Project z:Ref="i1" />
 			<_name>Default Scene</_name>

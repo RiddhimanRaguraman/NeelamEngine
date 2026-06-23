@@ -22,7 +22,7 @@ namespace NeelamEditor.GameProject
         [DataMember] public string Path { get; private set; }
 
         // Absolute path to the .neelam manifest file.
-        public string FullPath => $"{Path}{Name}{Extension}";
+        public string FullPath => $@"{Path}{Name}\{Name}{Extension}";
 
         // Backing storage for scenes; private so the public Scenes is read-only.
         [DataMember(Name = "Scenes")]
@@ -35,13 +35,14 @@ namespace NeelamEditor.GameProject
         public static Project Current => Application.Current.MainWindow.DataContext as Project;
 
         private Scene _activeScene;
-        // Scene currently being edited; persisted so the editor can restore focus on reload
+        // Scene currently being edited; persisted so the editor can restore focus on reload.
+        [DataMember]
         public Scene ActiveScene
         {
             get => _activeScene;
             set
             {
-                if(_activeScene != value)
+                if (_activeScene != value)
                 {
                     _activeScene = value;
                     OnPropertyChanged(nameof(ActiveScene));
@@ -49,17 +50,18 @@ namespace NeelamEditor.GameProject
             }
         }
 
+        // Shared undo/redo for this Project — kept static so any view can reach it
+        // without holding a Project reference.
         public static UndoRedo undoredo { get; } = new UndoRedo();
 
         // Commands the UI binds to. Set in OnDeserialized so they survive both
         // first-time construction and round-tripping through the serializer.
-        public ICommand Undo { get; private set; }
-        public ICommand Redo{ get; private set; }
-        public ICommand AddScene { get; private set; }
-        public ICommand RemoveScene { get; private set; }
+        public ICommand UndoCommand { get; private set; }
+        public ICommand RedoCommand { get; private set; }
+        public ICommand SaveCommand { get; private set; }
+        public ICommand AddSceneCommand { get; private set; }
+        public ICommand RemoveSceneCommand { get; private set; }
 
-        // Mutating helpers the commands wrap. Keep these private so all scene
-        // mutations route through the undo-redo system in the command bodies.
         private void AddSceneInternal(string sceneName)
         {
             Debug.Assert(!string.IsNullOrEmpty(sceneName.Trim()));
@@ -71,6 +73,7 @@ namespace NeelamEditor.GameProject
             Debug.Assert(_scenes.Contains(scene));
             _scenes.Remove(scene);
         }
+
         // Load a project from disk.
         public static Project Load(string file)
         {
@@ -81,18 +84,14 @@ namespace NeelamEditor.GameProject
         // Hook for tearing down the active project (placeholder).
         public void Unload()
         {
-
         }
 
-        // Persist project to its own FullPath.
-        public static void Load(Project Prj)
+        // Persist a project to its own FullPath.
+        public static void Save(Project project)
         {
-            Serializer.ToFile<Project>(Prj, Prj.FullPath);
+            Serializer.ToFile(project, project.FullPath);
         }
 
-        // Called by the serializer after deserialization completes; rebuilds the
-        // ReadOnlyObservableCollection wrapper since it isn't persisted itself,
-        // and wires up the scene-mutation commands with undo/redo support.
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
@@ -104,7 +103,7 @@ namespace NeelamEditor.GameProject
             ActiveScene = Scenes.FirstOrDefault(x => x.IsActive);
 
             // Append a new scene; undo removes it, redo re-inserts at the same index.
-            AddScene = new RelayCommand<object>(x =>
+            AddSceneCommand = new RelayCommand<object>(x =>
             {
                 AddSceneInternal($"New Scene {_scenes.Count}");
                 var newScene = _scenes.Last();
@@ -118,7 +117,7 @@ namespace NeelamEditor.GameProject
 
             // Remove a scene; undo re-inserts at the original position. Disabled
             // when the target is the project's active scene.
-            RemoveScene = new RelayCommand<Scene>(x =>
+            RemoveSceneCommand = new RelayCommand<Scene>(x =>
             {
                 var sceneIndex = _scenes.IndexOf(x);
                 RemoveSceneInternal(x);
@@ -129,11 +128,10 @@ namespace NeelamEditor.GameProject
                     $"Remove {x.Name}"));
             }, x => !x.IsActive);
 
-            Undo = new RelayCommand<object>(x => undoredo.Undo());
-            Redo = new RelayCommand<object>(x => undoredo.Redo());
-        
+            UndoCommand = new RelayCommand<object>(x => undoredo.Undo());
+            RedoCommand = new RelayCommand<object>(x => undoredo.Redo());
+            SaveCommand = new RelayCommand<object>(x => Save(this));
         }
-
 
         // Ctor used when creating a brand-new project (not loading from disk).
         // Manually invokes OnDeserialized to set up the read-only wrapper.
@@ -143,7 +141,5 @@ namespace NeelamEditor.GameProject
             Path = path;
             OnDeserialized(new StreamingContext());
         }
-
     }
-
 }

@@ -1,28 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using NeelamEditor.GameProject;
 
 namespace NeelamEditor.Editors
 {
-    /// <summary>
-    /// Interaction logic for WorldEditorView.xaml
-    /// </summary>
     public partial class WorldEditorView : UserControl
     {
+        // Singleton-ish: only one shell exists. Other views (e.g. inspectors)
+        // can reach it if they need to push state into it.
+        public static WorldEditorView Instance { get; private set; }
+
         public WorldEditorView()
         {
             InitializeComponent();
+            Instance = this;
+            Loaded += OnWorldEditorViewLoaded;
+        }
+
+        private void OnWorldEditorViewLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= OnWorldEditorViewLoaded;  // one-shot
+
+            // KeyBindings only fire when the bound element has keyboard focus.
+            Focus();
+
+            // Any change to the undo stack (a new action, an undo, or a redo) can
+            // remove the focused element from the tree, dropping keyboard focus.
+            // Re-grab it whenever the list mutates so Ctrl+Z/Y keep working.
+            ((INotifyCollectionChanged)Project.undoredo.UndoList)
+                .CollectionChanged += (s, e) => Focus();
         }
     }
 }

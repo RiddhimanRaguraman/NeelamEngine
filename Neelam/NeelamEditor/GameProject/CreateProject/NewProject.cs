@@ -183,7 +183,9 @@ namespace NeelamEditor.GameProject
                 // Read the template's project.neelam, substitute the name/path placeholders,
                 // and write it to the new project's root.
                 var projectXml = File.ReadAllText(template.ProjectFilePath);
-                projectXml = string.Format(projectXml, ProjectName, ProjectPath);
+                // projectXml = string.Format(projectXml, ProjectName, ProjectPath);
+                // {0}=Name, {1}=Path. Pass the project's own folder (path), not its parent.
+                projectXml = string.Format(projectXml, ProjectName, path);
                 var projectPath = Path.GetFullPath(Path.Combine(path + $"{ProjectName}{Project.Extension}"));
                 File.WriteAllText(projectPath, projectXml);
 
