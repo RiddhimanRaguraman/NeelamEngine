@@ -30,7 +30,8 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Expander IsExpanded="{Binding IsActive, Mode=OneWay}">
+                        <Expander IsExpanded="{Binding IsActive, Mode=OneWay}"
+                                  Expanded="OnScene_Expanded">
                             <Expander.Header>
                                 <Grid>
                                     <StackPanel Orientation="Horizontal">

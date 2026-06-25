@@ -29,5 +29,17 @@ namespace NeelamEditor.Editors
                 ? listBox.SelectedItems[0]
                 : null;
         }
+
+        // Expanding a scene makes it the project's active scene; siblings deactivate.
+        // Their expanders auto-collapse via the OneWay IsExpanded binding to IsActive.
+        private void OnScene_Expanded(object sender, RoutedEventArgs e)
+        {
+            var scene = ((Expander)sender).DataContext as Scene;
+            if (scene?.Project == null) return;
+            foreach (var s in scene.Project.Scenes)
+            {
+                s.IsActive = (s == scene);
+            }
+        }
     }
 }
