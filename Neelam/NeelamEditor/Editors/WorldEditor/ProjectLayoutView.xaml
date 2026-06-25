@@ -40,12 +40,14 @@
                                         <Button Content="Remove"
                                                 Command="{Binding DataContext.RemoveSceneCommand,
                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" Margin="20,0" Focusable="False"/>
+                                                CommandParameter="{Binding}" Margin="20,0" Focusable="False"
+                                                Style="{StaticResource SecondaryButtonStyle}" Width="72"/>
                                         <!-- Add an empty entity to this scene; only enabled when scene is active. -->
                                         <Button Content="Add Entity"
                                                 Click="OnAddEntity_Button_Click"
                                                 IsEnabled="{Binding IsActive}"
-                                                Focusable="False"/>
+                                                Focusable="False"
+                                                Style="{StaticResource PrimaryButtonStyle}" Width="96"/>
                                     </StackPanel>
                                 </Grid>
                             </Expander.Header>
@@ -63,6 +65,8 @@
                                             <Button Content="X"
                                                     Margin="10,0,0,0"
                                                     Focusable="False"
+                                                    Width="28" Padding="0"
+                                                    Style="{StaticResource SecondaryButtonStyle}"
                                                     Command="{Binding ParentScene.RemoveGameEntityCommand}"
                                                     CommandParameter="{Binding}"/>
                                         </StackPanel>

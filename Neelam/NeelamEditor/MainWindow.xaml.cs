@@ -39,5 +39,16 @@ namespace NeelamEditor
                 DataContext = projectBrowser.DataContext;
             }
         }
+
+        // Custom-titlebar button handlers (we removed the OS chrome via WindowStyle="None").
+        private void OnMinimize_Click(object sender, RoutedEventArgs e)
+            => WindowState = WindowState.Minimized;
+
+        private void OnMaximize_Click(object sender, RoutedEventArgs e)
+            => WindowState = WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
+
+        private void OnClose_Click(object sender, RoutedEventArgs e) => Close();
     }
 }
