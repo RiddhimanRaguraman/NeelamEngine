@@ -18,5 +18,9 @@ namespace NeelamEditor.Components
             System.Diagnostics.Debug.Assert(owner != null);
             Owner = owner;
         }
+
+        // Default display label = the concrete type name (e.g. "Transform").
+        // GameEntityView's components list binds `{Binding}`, which calls this.
+        public override string ToString() => GetType().Name;
     }
 }

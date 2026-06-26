@@ -33,7 +33,7 @@ namespace NeelamEditor.Components
         public Scene ParentScene { get; private set; }
 
         // Backing storage; the public Components is a read-only wrapper for bindings.
-        [DataMember(Name = "Components")]
+        [DataMember(Name = nameof(Components))]
         private ObservableCollection<Component> _components = new ObservableCollection<Component>();
         public ReadOnlyObservableCollection<Component> Components { get; private set; }
 

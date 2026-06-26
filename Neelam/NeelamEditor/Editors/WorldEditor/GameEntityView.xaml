@@ -20,7 +20,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <!-- Placeholder: show component type name. Real per-type editors land later. -->
-                    <TextBlock Text="{Binding GetType.Name}"/>
+                    <TextBlock Text="{Binding}"/>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
