@@ -22,7 +22,9 @@ namespace NeelamEditor.GameProject
         [DataMember] public string Path { get; private set; }
 
         // Absolute path to the .neelam manifest file.
-        public string FullPath => $@"{Path}{Name}\{Name}{Extension}";
+        // Path is the project's own folder (e.g. C:\Foo\NewProject\), so this
+        // resolves to C:\Foo\NewProject\NewProject.neelam.
+        public string FullPath => $@"{Path}{Name}{Extension}";
 
         // Backing storage for scenes; private so the public Scenes is read-only.
         [DataMember(Name = "Scenes")]

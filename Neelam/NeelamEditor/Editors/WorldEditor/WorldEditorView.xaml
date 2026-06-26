@@ -28,6 +28,8 @@
                     Style="{StaticResource SecondaryButtonStyle}" Width="72"/>
             <Button Content="Redo" Command="{Binding RedoCommand}" Margin="8,0,0,0"
                     Style="{StaticResource SecondaryButtonStyle}" Width="72"/>
+            <Button Content="Save" Command="{Binding SaveCommand}" Margin="24,0,0,0"
+                    Style="{StaticResource PrimaryButtonStyle}" Width="72"/>
         </StackPanel>
 
         <!-- Editor panes -->

@@ -32,6 +32,21 @@
                     <DataTemplate>
                         <Expander IsExpanded="{Binding IsActive, Mode=OneWay}"
                                   Expanded="OnScene_Expanded">
+                            <Expander.Style>
+                                <!-- Inherit the global dark Expander style, layer
+                                     an Opacity trigger on top: inactive scenes are
+                                     dimmed to half-strength so the active one reads
+                                     as the foreground context. -->
+                                <Style TargetType="Expander"
+                                       BasedOn="{StaticResource {x:Type Expander}}">
+                                    <Setter Property="Opacity" Value="0.5"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Opacity" Value="1"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Expander.Style>
                             <Expander.Header>
                                 <Grid>
                                     <StackPanel Orientation="Horizontal">
@@ -54,7 +69,6 @@
                             <!-- Game entities in this scene. SelectionChanged feeds the inspector. -->
                             <ListBox x:Name="entityList"
                                      ItemsSource="{Binding GameEntities}"
-                                     IsEnabled="{Binding IsActive}"
                                      SelectionMode="Extended"
                                      SelectionChanged="OnGameEntity_ListBox_SelectionChanged"
                                      Height="160">

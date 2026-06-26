@@ -49,8 +49,8 @@
         <Grid Grid.Row="2" ClipToBounds="True">
             <StackPanel Orientation="Horizontal" x:Name="browsercontent"
                         HorizontalAlignment="Left">
-                <local:OpenProjectView />
-                <local:NewProjectView />
+                <local:OpenProjectView x:Name="openProjectView"/>
+                <local:NewProjectView x:Name="newProjectView"/>
             </StackPanel>
         </Grid>
     </Grid>

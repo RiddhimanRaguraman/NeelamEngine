@@ -7,22 +7,53 @@
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     <StackPanel>
-        <!-- Selected entity's name. -->
-        <TextBlock Text="{Binding Name}" FontSize="16" Margin="5"/>
+        <!-- Toolbar: 32px Border holding the "Add Component" dropdown stub. -->
+        <Border Height="32">
+            <ToggleButton x:Name="addComponent" VerticalAlignment="Center"
+                          HorizontalAlignment="Left" Margin="5,0,0,0"
+                          Foreground="Black">
+                <ToggleButton.Content>
+                    <DockPanel>
+                        <TextBlock Text="Add Component" Margin="5,0" Foreground="Black"/>
+                        <!-- Triangle glyph as a downward chevron. Inherits Foreground
+                             from the ToggleButton so the dark theme tints it. -->
+                        <Path Margin="3,0,2,0"
+                              Data="M0,0 L0,2 L4,6 L8,2 L8,0 L4,4 z"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Fill="{Binding Foreground,
+                                     RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                    </DockPanel>
+                </ToggleButton.Content>
+            </ToggleButton>
+        </Border>
 
-        <!-- Components attached to the entity. -->
-        <ItemsControl ItemsSource="{Binding Components}" Margin="5,0,5,5">
+        <!-- Name + Enabled row. -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="78"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Name" Grid.Column="0" Margin="5,0,0,0" VerticalAlignment="Center"/>
+            <TextBox   Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                       Grid.Column="1"/>
+
+            <StackPanel Orientation="Horizontal" Grid.Column="2">
+                <TextBlock Text="Enabled" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                <CheckBox IsChecked="{Binding IsEnabled}" Margin="5,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- One row per attached component (Transform, future Mesh/Light/etc.).
+             Each renders via Component.ToString() = type name. -->
+        <ItemsControl ItemsSource="{Binding Components}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <!-- Placeholder: show component type name. Real per-type editors land later. -->
-                    <TextBlock Text="{Binding}"/>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
         </ItemsControl>
     </StackPanel>
 </UserControl>
