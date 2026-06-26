@@ -7,12 +7,11 @@ namespace NeelamEditor.Editors
 {
     public partial class WorldEditorView : UserControl
     {
-        // Singleton-ish: only one shell exists. Other views (e.g. inspectors)
-        // can reach it if they need to push state into it.
+        // Singleton-ish: only one shell exists. 
         public static WorldEditorView Instance { get; private set; }
 
         public WorldEditorView()
-        {
+        { 
             InitializeComponent();
             Instance = this;
             Loaded += OnWorldEditorViewLoaded;
