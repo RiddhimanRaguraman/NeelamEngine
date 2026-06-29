@@ -27,12 +27,13 @@ namespace NeelamEditor.GameProject
         private void OnProjectBrowserDialogLoaded(object sender, RoutedEventArgs e)
         {
             Loaded -= OnProjectBrowserDialogLoaded;
-            if(OpenProject.Projects.Any())
+            // No recent projects yet → there's nothing to open. Disable the Open tab
+            // and drop the user onto Create Project so they can get started.
+            if (!OpenProject.Projects.Any())
             {
                 openProjectButton.IsEnabled = false;
                 openProjectView.Visibility = Visibility.Hidden;
                 OnToggleButton_Click(createProjectButton, new RoutedEventArgs());
-                
             }
         }
 

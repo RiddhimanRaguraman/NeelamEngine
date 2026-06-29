@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Runtime.Serialization;
+using System.Windows.Input;
 using NeelamEditor.Common;
 using NeelamEditor.GameProject;
+using NeelamEditor.Utilities;
 
 namespace NeelamEditor.Components
 {
@@ -51,8 +53,12 @@ namespace NeelamEditor.Components
         private ObservableCollection<Component> _components = new ObservableCollection<Component>();
         public ReadOnlyObservableCollection<Component> Components { get; private set; }
 
-        // Wire up the read-only wrapper. Called from the ctor for fresh entities
-        // and from the serializer for loaded ones.
+        // Bound to the entity's name TextBox; wraps the assignment in an undo entry
+        // that uses the reflection-based UndoRedoAction overload.
+        public ICommand RenameCommand { get; private set; }
+
+        // Wire up the read-only wrapper + commands. Called from the ctor for fresh
+        // entities and from the serializer for loaded ones.
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
@@ -61,6 +67,15 @@ namespace NeelamEditor.Components
                 Components = new ReadOnlyObservableCollection<Component>(_components);
                 OnPropertyChanged(nameof(Components));
             }
+
+            RenameCommand = new RelayCommand<string>(x =>
+            {
+                var oldName = _name;
+                Name = x;
+                Project.undoredo.Add(new UndoRedoAction(
+                    nameof(Name), this, oldName, x,
+                    $"Rename entity '{oldName}' to '{x}'"));
+            }, x => x != _name);
         }
 
         public GameEntity(Scene scene)

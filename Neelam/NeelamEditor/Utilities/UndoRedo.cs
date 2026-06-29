@@ -43,6 +43,16 @@ namespace NeelamEditor.Utilities
             _undoAction = undo;
             _redoAction = redo;
         }
+
+        public UndoRedoAction(string property, object instance, object undovalue, object redovalue, string name):
+            this(
+                () => instance.GetType().GetProperty(property).SetValue(instance,undovalue),
+                () => instance.GetType().GetProperty(property).SetValue(instance,redovalue),
+                name
+                )
+        {
+
+        }
     }
 
     // Owns the undo / redo stacks. Add an IUndoRedo with Add(...) when the user

@@ -1,0 +1,26 @@
+<ResourceDictionary x:Class="NeelamEditor.Themes.ControlTemplates"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:NeelamEditor.Themes">
+
+    <!-- ============================================================
+         Implicit TextBox style. Inherits all the visual setters from
+         DarkTheme's keyed TextBoxStyle, then layers a KeyDown handler
+         on top so every TextBox in the app gets:
+           Enter   → commit (run Tag.ICommand if set, else UpdateSource)
+           Escape  → revert (UpdateTarget)
+         Both clear keyboard focus afterwards so the editor's hotkeys
+         work again without an extra click.
+         ============================================================ -->
+    <Style TargetType="{x:Type TextBox}"
+           x:Key="{x:Type TextBox}"
+           BasedOn="{StaticResource TextBoxStyle}">
+        <EventSetter Event="KeyDown"            Handler="OnTextBox_KeyDown"/>
+        <!-- LostKeyboardFocus (not LostFocus) so our commit runs BEFORE the
+             binding's default LostFocus push — otherwise the source is already
+             updated by the time we look at it, and the command's CanExecute
+             returns false (oldName == newName), so no undo entry is created. -->
+        <EventSetter Event="LostKeyboardFocus"  Handler="OnTextBox_LostKeyboardFocus"/>
+    </Style>
+
+</ResourceDictionary>

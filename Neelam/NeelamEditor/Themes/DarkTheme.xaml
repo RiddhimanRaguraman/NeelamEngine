@@ -32,9 +32,11 @@
     </Style>
 
     <!-- ============================================================ -->
-    <!-- TextBox: InputBrush fill, BorderBrush outline.                -->
+    <!-- TextBox visual style. Keyed (not implicit) so ControlTemplates -->
+    <!-- can extend it with the Enter/Escape KeyDown handler and re-   -->
+    <!-- expose the result as the implicit TextBox style for the app.  -->
     <!-- ============================================================ -->
-    <Style TargetType="{x:Type TextBox}">
+    <Style TargetType="{x:Type TextBox}" x:Key="TextBoxStyle">
         <Setter Property="Background"      Value="{StaticResource InputBrush}"/>
         <Setter Property="Foreground"      Value="{StaticResource TextBrush}"/>
         <Setter Property="CaretBrush"      Value="{StaticResource TextBrush}"/>
