@@ -6,7 +6,7 @@
     <!-- ============================================================ -->
     <SolidColorBrush x:Key="BaseBrush"        Color="#1E1E1E" po:Freeze="True"
                      xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"/>
-    <SolidColorBrush x:Key="SurfaceBrush"     Color="#000000"/>
+    <SolidColorBrush x:Key="SurfaceBrush"     Color="#252526"/>
     <SolidColorBrush x:Key="RaisedBrush"      Color="#2D2D30"/>
     <SolidColorBrush x:Key="InputBrush"       Color="#333337"/>
     <SolidColorBrush x:Key="BorderBrush"      Color="#3F3F46"/>
