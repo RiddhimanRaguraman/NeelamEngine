@@ -47,7 +47,15 @@
                 </Grid.RowDefinitions>
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"/>
-                <utls:UndoRedoView DataContext="{x:Static gp:Project.undoredo}" Grid.Row="1"/>
+                <TabControl Grid.Row="1">
+                    <TabItem Header="History">
+                        <utls:UndoRedoView DataContext="{x:Static gp:Project.undoredo}" />
+                    </TabItem>
+                    <TabItem Header="Log">
+                        <utls:LoggerView />
+                    </TabItem>
+                </TabControl>
+                
             </Grid>
 
             <!-- Vertical splitter between the two columns -->

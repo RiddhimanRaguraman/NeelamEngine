@@ -83,15 +83,18 @@ namespace NeelamEditor.GameProject
             return Serializer.FromFile<Project>(file);
         }
 
-        // Hook for tearing down the active project (placeholder).
+        // Hook for tearing down the active project. Clears the shared
+        // history so undo doesn't carry across project switches.
         public void Unload()
         {
+            undoredo.Reset();
         }
 
         // Persist a project to its own FullPath.
         public static void Save(Project project)
         {
             Serializer.ToFile(project, project.FullPath);
+            Logger.Log(MessageTypes.Info, $"Project saved to {project.FullPath}");
         }
 
         [OnDeserialized]

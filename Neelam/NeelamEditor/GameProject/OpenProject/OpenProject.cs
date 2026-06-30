@@ -1,8 +1,9 @@
+using NeelamEditor.Utilities;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.Serialization;
-using NeelamEditor.Utilities;
+using System.Windows.Shapes;
 
 namespace NeelamEditor.GameProject
 {
@@ -108,6 +109,8 @@ namespace NeelamEditor.GameProject
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
+                Logger.Log(MessageTypes.Error, $"Failed to open project; unable to read the data");
+                throw;
             }
         }
 

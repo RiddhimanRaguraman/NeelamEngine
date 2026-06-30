@@ -47,11 +47,6 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Text="Name" Grid.Column="0" Margin="5,0,0,0" VerticalAlignment="Center"/>
-            <!-- Default LostFocus trigger: keystrokes update the TextBox's own
-                 Text property only; the source (GameEntity.Name) isn't touched
-                 until the user commits. ControlTemplates' KeyDown / LostKeyboardFocus
-                 hooks intercept BEFORE that push, run RenameCommand via Tag, and
-                 the command captures the still-unchanged _name as `oldName`. -->
             <TextBox   Text="{Binding Name}"
                        Tag="{Binding RenameCommand}"
                        Grid.Column="1"/>

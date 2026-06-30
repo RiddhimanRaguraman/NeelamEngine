@@ -195,8 +195,8 @@ namespace NeelamEditor.GameProject
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
-                // TODO: log error
-                return string.Empty;
+                Logger.Log(MessageTypes.Error, $"Failed to create {ProjectName}");
+                throw;
             }
         }
 
@@ -224,7 +224,8 @@ namespace NeelamEditor.GameProject
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
-                // TODO: log error
+                Logger.Log(MessageTypes.Error, $"Failed to read the Template Project data; Check installation of template");
+                throw;
             }
         }
     }

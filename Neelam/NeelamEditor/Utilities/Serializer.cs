@@ -1,3 +1,4 @@
+using NeelamEditor.GameProject;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,7 +25,8 @@ namespace NeelamEditor.Utilities
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
-                // TODO: Better logging
+                Logger.Log(MessageTypes.Error, $"Failed to Deserialize {instance} to {path}");
+                throw;
             }
         }
 
@@ -41,8 +43,8 @@ namespace NeelamEditor.Utilities
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
-                // TODO: Better logging
-                return default(T);
+                Logger.Log(MessageTypes.Error, $"Failed to Deserialize {path}");
+                throw;
             }
         }
     }
