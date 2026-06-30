@@ -6,7 +6,7 @@
     <!-- ============================================================ -->
     <SolidColorBrush x:Key="BaseBrush"        Color="#1E1E1E" po:Freeze="True"
                      xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"/>
-    <SolidColorBrush x:Key="SurfaceBrush"     Color="#252526"/>
+    <SolidColorBrush x:Key="SurfaceBrush"     Color="#000000"/>
     <SolidColorBrush x:Key="RaisedBrush"      Color="#2D2D30"/>
     <SolidColorBrush x:Key="InputBrush"       Color="#333337"/>
     <SolidColorBrush x:Key="BorderBrush"      Color="#3F3F46"/>
@@ -29,6 +29,57 @@
         <Setter Property="Background"  Value="{StaticResource SurfaceBrush}"/>
         <Setter Property="Foreground"  Value="{StaticResource TextBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    </Style>
+
+    <!-- ============================================================ -->
+    <!-- TabControl + TabItem: header strip in BaseBrush, body in       -->
+    <!-- SurfaceBrush. Active tab "blends in" with the body and gets a  -->
+    <!-- 2px AccentBrush underline — same vocabulary as the Project     -->
+    <!-- Browser's Open/Create tabs.                                    -->
+    <!-- ============================================================ -->
+    <Style TargetType="{x:Type TabControl}">
+        <Setter Property="Background"      Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding"         Value="0"/>
+    </Style>
+
+    <Style TargetType="{x:Type TabItem}">
+        <Setter Property="Background" Value="{StaticResource BaseBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Padding"    Value="14,6"/>
+        <Setter Property="Cursor"     Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabItem}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="0,0,0,2"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter ContentSource="Header"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background"
+                                    Value="{StaticResource RaisedBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background"
+                                    Value="{StaticResource SurfaceBrush}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ============================================================ -->
