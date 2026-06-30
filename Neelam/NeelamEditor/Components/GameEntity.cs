@@ -56,6 +56,7 @@ namespace NeelamEditor.Components
         // Bound to the entity's name TextBox; wraps the assignment in an undo entry
         // that uses the reflection-based UndoRedoAction overload.
         public ICommand RenameCommand { get; private set; }
+        public ICommand IsEnabledCommand { get; private set; }
 
         // Wire up the read-only wrapper + commands. Called from the ctor for fresh
         // entities and from the serializer for loaded ones.
@@ -76,6 +77,15 @@ namespace NeelamEditor.Components
                     nameof(Name), this, oldName, x,
                     $"Rename entity '{oldName}' to '{x}'"));
             }, x => x != _name);
+
+            IsEnabledCommand = new RelayCommand<bool>(x =>
+            {
+                var oldValue= _isEnabled;
+                _isEnabled = x;
+                Project.undoredo.Add(new UndoRedoAction(
+                    nameof(IsEnabled), this, oldValue, x,
+                    x ? $"Enable {Name}": $"Disable {Name}"));
+            });
         }
 
         public GameEntity(Scene scene)
