@@ -256,6 +256,55 @@
     </Style>
 
     <!-- ============================================================ -->
+    <!-- Filter toggle used in the LoggerView (Info/Warning/Error).    -->
+    <!--   Unchecked : transparent + muted grey text                   -->
+    <!--   Hover     : subtle raised background                        -->
+    <!--   Checked   : raised background + accent underline + white    -->
+    <!-- Same idiom as the tab toggles, sized smaller for a toolbar.   -->
+    <!-- ============================================================ -->
+    <Style x:Key="LogFilterToggleStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="Foreground"      Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Padding"         Value="10,0"/>
+        <Setter Property="Height"          Value="24"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="0,0,0,2"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background"
+                                    Value="{StaticResource RaisedBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background"
+                                    Value="{StaticResource RaisedBrush}"/>
+                            <!-- DynamicResource (not Static) so per-instance
+                                 overrides of AccentBrush on the ToggleButton
+                                 are picked up — e.g. LoggerView tints each
+                                 severity toggle with its own colour. -->
+                            <Setter TargetName="Bd" Property="BorderBrush"
+                                    Value="{DynamicResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============================================================ -->
     <!-- Thin dark ScrollBar (vertical + horizontal).                  -->
     <!--   Track transparent, thumb in BorderBrush → TextMutedBrush    -->
     <!--   on hover. No repeat buttons.                                -->

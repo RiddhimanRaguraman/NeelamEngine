@@ -1,17 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace NeelamEditor.Utilities
 {
@@ -23,6 +11,27 @@ namespace NeelamEditor.Utilities
         public LoggerView()
         {
             InitializeComponent();
+
+            Loaded += (s, e) =>
+            {
+                Logger.Log(MessageTypes.Info, "Infomation message");
+                Logger.Log(MessageTypes.Warning, "Warning message");
+                Logger.Log(MessageTypes.Error, "Error message");
+            };
+        }
+
+        private void OnClear_Button_Click(object sender, RoutedEventArgs e)
+        {
+            Logger.Clear();
+        }
+
+        private void OnMessageFilter_Button_Click(object sender, RoutedEventArgs e)
+        {
+            var filter = 0x0;
+            if (toggleinfo.IsChecked == true) filter |= (int)MessageTypes.Info;
+            if (togglewarn.IsChecked == true) filter |= (int)MessageTypes.Warning;
+            if (toggleerror.IsChecked == true) filter |= (int)MessageTypes.Error;
+            Logger.SetMessageFilter(filter);
         }
     }
 }

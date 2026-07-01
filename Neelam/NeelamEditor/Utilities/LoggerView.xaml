@@ -6,18 +6,83 @@
              xmlns:local="clr-namespace:NeelamEditor.Utilities"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Margin="8,4">
-        <ItemsControl ItemsSource = "{Binding Source={x:Static local:Logger.FilteredMessages}}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Message}"/>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>  
-    </Grid>
+    <DockPanel>
+        <Border Height="32" DockPanel.Dock="Top">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="4,0" VerticalAlignment="Center">
+                <Button Content="Clear" Width="64" Margin="1,0"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="OnClear_Button_Click" Focusable="False"/>
+                <!-- Each toggle overrides AccentBrush locally so its "checked" underline
+                     picks up the severity colour used for the same message type in the
+                     log rows above. Info=sky blue, Warning=amber, Error=red. -->
+                <ToggleButton IsChecked="True" Content="Info" Margin="1,0"
+                              Style="{StaticResource LogFilterToggleStyle}"
+                              ToolTip="Toggle Information messages"
+                              x:Name="toggleinfo" Click="OnMessageFilter_Button_Click">
+                    <ToggleButton.Resources>
+                        <SolidColorBrush x:Key="AccentBrush" Color="DeepSkyBlue"/>
+                    </ToggleButton.Resources>
+                </ToggleButton>
+                <ToggleButton IsChecked="True" Content="Warning" Margin="1,0"
+                              Style="{StaticResource LogFilterToggleStyle}"
+                              ToolTip="Toggle Warning messages"
+                              x:Name="togglewarn" Click="OnMessageFilter_Button_Click">
+                    <ToggleButton.Resources>
+                        <SolidColorBrush x:Key="AccentBrush" Color="#FFFFBB22"/>
+                    </ToggleButton.Resources>
+                </ToggleButton>
+                <ToggleButton IsChecked="True" Content="Error" Margin="1,0"
+                              Style="{StaticResource LogFilterToggleStyle}"
+                              ToolTip="Toggle Error messages"
+                              x:Name="toggleerror" Click="OnMessageFilter_Button_Click">
+                    <ToggleButton.Resources>
+                        <SolidColorBrush x:Key="AccentBrush" Color="#FFFF4455"/>
+                    </ToggleButton.Resources>
+                </ToggleButton>
+            </StackPanel>
+        </Border>
+                
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" 
+                      x:Name="ScrollerViewer">
+            <ItemsControl ItemsSource = "{Binding Source={x:Static local:Logger.FilteredMessages}}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel ToolTip = "{Binding Metadata}">
+                            <DockPanel.Style>
+                                <Style TargetType="DockPanel">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="true">
+                                            <Setter Property="Background" Value="Gray"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DockPanel.Style>
+                            <TextBlock Text="{Binding Time, StringFormat=hh:mm:ss}" Margin="5,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="DeepSkyBlue"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Type}" Value="{x:Static local:MessageTypes.Warning}">
+                                                <Setter Property="Foreground" Value="#FFFFBB22"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="{x:Static local:MessageTypes.Error}">
+                                                <Setter Property="Foreground" Value="#FFFF4455"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
 </UserControl>

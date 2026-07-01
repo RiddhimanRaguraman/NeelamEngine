@@ -31,12 +31,12 @@ namespace NeelamEditor.Utilities
 
         public LogMessage(MessageTypes _type, string _msg, string _file, string _caller, int _line)
         {
+            this.Time = DateTime.Now;
             this.Type = _type;
             this.Message = _msg;
             this.File = _file;
             this.Caller = _caller;
             this.Line = _line;
-
         }
 
     }
