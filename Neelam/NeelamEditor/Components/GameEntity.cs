@@ -97,4 +97,12 @@ namespace NeelamEditor.Components
             OnDeserialized(new StreamingContext());
         }
     }
+
+    abstract class MSEntity : ViewModelBase
+    { }
+
+    class MSGameEntity : MSEntity
+    {
+
+    }
 }

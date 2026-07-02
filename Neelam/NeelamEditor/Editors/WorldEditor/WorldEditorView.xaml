@@ -47,6 +47,10 @@
                 </Grid.RowDefinitions>
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"/>
+
+                <!-- Top-left: viewport that will host the Vulkan renderer. -->
+                <local:RenderView Grid.Row="0"/>
+
                 <TabControl Grid.Row="1">
                     <TabItem Header="History">
                         <utls:UndoRedoView DataContext="{x:Static gp:Project.undoredo}" />
