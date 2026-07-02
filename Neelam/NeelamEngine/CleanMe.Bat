@@ -7,6 +7,7 @@ REM
 REM cleanup root director
 
     if exist ..\Azul rmdir /S /Q ..\Azul
+    if exist ..\bin rmdir /S /Q ..\bin
    REM if exist *.user del /F /s *.user
     if exist Azul rmdir /S /Q Azul
     if exist Logs rmdir /S /Q Logs

@@ -20,7 +20,7 @@ Azul/
 
 Neelam/NeelamEditor/bin/
 Neelam/NeelamEditor/obj/
-
+Neelam/NeelamEngine/obj/
 *.sln
 *.vcxproj
 *.vcxproj.filters

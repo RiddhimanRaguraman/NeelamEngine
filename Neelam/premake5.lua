@@ -30,13 +30,11 @@ project "NeelamEngine"
 
 	includedirs {
 		"%{prj.name}",
+		"%{prj.name}/Common",
 		"Framework"
 	}
 
 	links { "Framework" }
-
-	pchheader "pch.h"
-	pchsource "%{prj.name}/pch.cpp"
 
 	forceincludes {
 		"Framework.h"
