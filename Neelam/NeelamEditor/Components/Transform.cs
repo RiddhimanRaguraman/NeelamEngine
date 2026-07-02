@@ -6,7 +6,7 @@ namespace NeelamEditor.Components
     // Position / Rotation / Scale of a GameEntity. Every entity has one of these.
     // System.Numerics.Vector3 is a value type, so equality compares component-wise.
     [DataContract]
-    public class Transform : Component
+     class Transform : Component
     {
         [DataMember]
         private Vector3 _position;

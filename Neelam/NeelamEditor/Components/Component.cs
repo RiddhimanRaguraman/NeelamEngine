@@ -3,11 +3,14 @@ using NeelamEditor.Common;
 
 namespace NeelamEditor.Components
 {
+
+    interface IMSComponent { }
+
     // Base class for anything attached to a GameEntity (transform, mesh, light, …).
     // Subclasses must be listed under KnownType on GameEntity so the serializer
     // can resolve them when the components list is deserialized.
     [DataContract]
-    public abstract class Component : ViewModelBase
+    abstract class Component : ViewModelBase
     {
         // Back-reference to the entity holding this component.
         [DataMember]
@@ -23,4 +26,12 @@ namespace NeelamEditor.Components
         // GameEntityView's components list binds `{Binding}`, which calls this.
         public override string ToString() => GetType().Name;
     }
+
+    abstract class MSComponent<T> : ViewModelBase, IMSComponent where T :Component 
+    { }
+
+
+
 }
+
+

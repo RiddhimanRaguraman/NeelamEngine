@@ -27,23 +27,7 @@ namespace NeelamEditor.Editors
         // undo stack so the user can step backward/forward through prior selections.
         private void OnGameEntity_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Clear first so the inspector blanks out when nothing is selected.
-            GameEntityView.Instance.DataContext = null;
-
             var listBox = sender as ListBox;
-            if (e.AddedItems.Count > 0)
-            {
-                var firstEntity = listBox.SelectedItems[0] as GameEntity;
-                GameEntityView.Instance.DataContext = firstEntity;
-
-                // Activate this entity's scene so the toolbar / Add Entity button
-                // operate on the scene the user is actually working in.
-                ActivateScene(firstEntity?.ParentScene);
-            }
-
-            // Snapshot the current selection set and reconstruct what it was before
-            // this event by removing items that just got added and re-including ones
-            // that just got removed.
             var newSelection = listBox.SelectedItems.Cast<GameEntity>().ToList();
             var previousSelection = newSelection
                 .Except(e.AddedItems.Cast<GameEntity>())
@@ -66,6 +50,12 @@ namespace NeelamEditor.Editors
                         (listBox.ItemContainerGenerator.ContainerFromItem(x) as ListBoxItem).IsSelected = true);
                 },
                 "Selection changed"));
+            MSGameEntity msEntity = null;
+            if(newSelection.Any())
+            {
+                msEntity = new MSGameEntity(newSelection);
+            }
+            GameEntityView.Instance.DataContext = msEntity;
         }
 
         // Expanding a scene makes it the project's active scene; siblings deactivate.

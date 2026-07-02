@@ -11,7 +11,7 @@ namespace NeelamEditor.GameProject
 {
     // The loaded game project. Serializes as <Game>...</Game> in the .neelam file.
     [DataContract(Name = "Game")]
-    public class Project : ViewModelBase
+    class Project : ViewModelBase
     {
         // File extension used for project manifests on disk.
         public static string Extension { get; } = ".neelam";

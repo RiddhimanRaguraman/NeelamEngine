@@ -11,7 +11,7 @@ namespace NeelamEditor.GameProject
     // One scene inside a Project. Owns a list of GameEntities and commands to
     // mutate them with full undo/redo support.
     [DataContract]
-    public class Scene : ViewModelBase
+    class Scene : ViewModelBase
     {
         [DataMember]
         private string _name;
