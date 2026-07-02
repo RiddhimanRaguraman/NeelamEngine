@@ -1,3 +1,6 @@
+using NeelamEditor.Components;
+using NeelamEditor.Utilities;
+using NeelamEditor.GameProject;
 using System.Windows.Controls;
 
 namespace NeelamEditor.Editors
@@ -7,6 +10,8 @@ namespace NeelamEditor.Editors
     // can push the selected entity into DataContext on SelectionChanged.
     public partial class GameEntityView : UserControl
     {
+        private Action _undoAction;
+        private string _propertyName;
         public static GameEntityView Instance { get; private set; }
 
         public GameEntityView()
@@ -14,6 +19,44 @@ namespace NeelamEditor.Editors
             InitializeComponent();
             DataContext = null;
             Instance = this;
+            DataContextChanged += (_, __) =>
+            {
+                if(DataContext != null)
+                {
+                    (DataContext as MSEntity).PropertyChanged += (s, e) => _propertyName = e.PropertyName;
+                }
+            };
         }
+
+        private Action GetRenameAction()
+        {
+            var vm = DataContext as MSEntity;
+            var Selection = vm.SelectedEntities.Select(entity => (entity, entity.Name)).ToList();
+            return  new Action(() =>
+            {
+                Selection.ForEach(item => item.entity.Name = item.Name);
+                (DataContext as MSEntity).Refresh();
+            });
+        }
+
+        private void OnName_Textbox_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
+            var vm = DataContext as MSEntity;
+            var Selection = vm.SelectedEntities.Select(entity => (entity, entity.Name)).ToList();
+            _undoAction = GetRenameAction();
+        }
+
+        private void OnName_Textbox_LostKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
+            if(_propertyName == nameof(MSEntity.Name) && _undoAction != null)
+            {
+                var redoAction = GetRenameAction();
+                Project.undoredo.Add(new UndoRedoAction (_undoAction, redoAction, "Rename Game Entity"));
+                _propertyName = null;
+            }
+            _undoAction = null;
+        }
+
+ 
     }
 }
