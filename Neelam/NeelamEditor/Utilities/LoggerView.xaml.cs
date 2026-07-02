@@ -11,13 +11,6 @@ namespace NeelamEditor.Utilities
         public LoggerView()
         {
             InitializeComponent();
-
-            Loaded += (s, e) =>
-            {
-                Logger.Log(MessageTypes.Info, "Infomation message");
-                Logger.Log(MessageTypes.Warning, "Warning message");
-                Logger.Log(MessageTypes.Error, "Error message");
-            };
         }
 
         private void OnClear_Button_Click(object sender, RoutedEventArgs e)

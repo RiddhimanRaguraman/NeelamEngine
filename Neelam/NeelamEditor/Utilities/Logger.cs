@@ -46,7 +46,7 @@ namespace NeelamEditor.Utilities
         // Default: Info | Warning | Error (everything).
         private static int _messageFilter = (int)(MessageTypes.Info | MessageTypes.Warning | MessageTypes.Error);
 
-        private static ObservableCollection<LogMessage> _messages = new ObservableCollection<LogMessage>();
+        private static readonly ObservableCollection<LogMessage> _messages = new ObservableCollection<LogMessage>();
         public static ReadOnlyObservableCollection<LogMessage> Messages { get; } = new ReadOnlyObservableCollection<LogMessage>(_messages);
 
         // UI binds to FilteredMessages.View so changing _messageFilter (then

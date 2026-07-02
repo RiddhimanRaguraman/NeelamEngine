@@ -39,10 +39,19 @@ namespace NeelamEditor.Editors
             });
         }
 
-        private void OnName_Textbox_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        private Action GetIsEnabledAction()
         {
             var vm = DataContext as MSEntity;
-            var Selection = vm.SelectedEntities.Select(entity => (entity, entity.Name)).ToList();
+            var Selection = vm.SelectedEntities.Select(entity => (entity, entity.IsEnabled)).ToList();
+            return  new Action(() =>
+            {
+                Selection.ForEach(item => item.entity.IsEnabled = item.IsEnabled);
+                (DataContext as MSEntity).Refresh();
+            });
+        }
+
+        private void OnName_Textbox_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        {
             _undoAction = GetRenameAction();
         }
 
@@ -57,6 +66,14 @@ namespace NeelamEditor.Editors
             _undoAction = null;
         }
 
- 
+        private void OnIsEnabled_CheckBox_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var undoAction = GetIsEnabledAction();
+            var vm = DataContext as MSEntity;
+            vm.IsEnabled = (sender as CheckBox).IsChecked == true;
+            var redoAction = GetIsEnabledAction();
+            Project.undoredo.Add(new UndoRedoAction(undoAction, redoAction,
+                vm.IsEnabled == true ? "Enable Game Entity" : "Disable Game Entity"));
+        }
     }
 }
