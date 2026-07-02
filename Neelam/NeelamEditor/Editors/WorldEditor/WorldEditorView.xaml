@@ -35,15 +35,16 @@
         <!-- Editor panes -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
+                <!-- Large viewport on the left, narrow tool sidebar on the right -->
+                <ColumnDefinition Width="4*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left column: split top/bottom -->
+            <!-- Left column: big viewport on top, short History/Log strip below -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
+                    <RowDefinition Height="3*"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"/>
@@ -69,8 +70,8 @@
             <!-- Right column: top = scene/entity tree, bottom = selected-entity inspector -->
             <Grid Grid.Column="1" Margin="5,0,0,0">
                 <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
+                    <RowDefinition Height="3*"/>
+                    <RowDefinition Height="2*"/>
                 </Grid.RowDefinitions>
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Top"/>
