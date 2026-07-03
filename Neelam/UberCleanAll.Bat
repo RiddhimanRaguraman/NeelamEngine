@@ -61,3 +61,7 @@ cd Libs\File
 call "CleanMe.Bat"
 cd ..\..
 
+cd Libs\AnimTime
+call "CleanMe.Bat"
+cd ..\..
+

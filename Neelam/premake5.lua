@@ -162,7 +162,8 @@ project "NeelamEngine"
 		"%{prj.name}",
 		"Framework",
 		"Libs/Math/include",
-		"Libs/File/include"
+		"Libs/File/include",
+		"Libs/AnimTime/include"
 	}
 
 	-- Auto-add every source subfolder of the engine as an include dir,
@@ -174,15 +175,16 @@ project "NeelamEngine"
 	end
 
 	-- Framework (shared items) + the source-built Keenan libraries.
-	links { "Framework", "Math", "File" }
+	links { "Framework", "Math", "File", "AnimTime" }
 
 	forceincludes {
 		"Framework.h"
 	}
 
 	defines {
-		"MATH_USE_DLL",		-- consume Math via dllimport
-		"FILE_USE_DLL",		-- consume File via dllimport
+		"MATH_USE_DLL",			-- consume Math via dllimport
+		"FILE_USE_DLL",			-- consume File via dllimport
+		"ANIM_TIME_USE_DLL",	-- consume AnimTime via dllimport
 		'WINDOWS_TARGET_PLATFORM="$(TargetPlatformVersion)"',
 		'SOLUTION_DIR=R"($(SolutionDir))"',
 		'TOOLS_VERSION=R"($(VCToolsVersion))"',
@@ -215,6 +217,7 @@ project "NeelamEngine"
 group "Libs"
 	keenanLib("Math", "MATH")
 	keenanLib("File", "FILE")
+	keenanLib("AnimTime", "ANIM_TIME")
 group ""
 
 group "Tests"
