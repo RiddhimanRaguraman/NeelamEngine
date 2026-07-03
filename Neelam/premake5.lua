@@ -30,10 +30,16 @@ project "NeelamEngine"
 
 	includedirs {
 		"%{prj.name}",
-		"%{prj.name}/Common",
-		"%{prj.name}/Component",
 		"Framework"
 	}
+
+	-- Auto-add every source subfolder of the engine as an include dir,
+	-- so new feature folders need no premake edit (skips the obj tree).
+	for _, dir in ipairs(os.matchdirs("NeelamEngine/**")) do
+		if not dir:find("obj") then
+			includedirs { dir }
+		end
+	end
 
 	links { "Framework" }
 

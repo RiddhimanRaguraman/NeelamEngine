@@ -12,9 +12,11 @@ using s32 = int32_t;
 using s16 = int16_t;
 using s8 = int8_t;
 
+// invalid id values
 constexpr u64 u64_invalid_id{ 0xffff'ffff'ffff'ffffui64 };
 constexpr u32 u32_invalid_id{ 0xffff'ffffui32 };
 constexpr u16 u16_invalid_id{ 0xffffui16 };
 constexpr u8  u8_invalid_id{ 0xffui8 };
 
+// floating point
 using f32 = float;

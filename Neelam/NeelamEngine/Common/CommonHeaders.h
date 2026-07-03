@@ -1,5 +1,5 @@
 #pragma once
 
-#include <type_traits>
+#include <type_traits>			// std::conditional_t
 
-#include "PrimitiveTypes.h"
+#include "PrimitiveTypes.h"		// engine primitive types
