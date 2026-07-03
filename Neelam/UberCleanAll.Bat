@@ -53,3 +53,11 @@ cd NeelamEditor
 call "CleanMe.Bat"
 cd ..
 
+cd Libs\Math
+call "CleanMe.Bat"
+cd ..\..
+
+cd Libs\File
+call "CleanMe.Bat"
+cd ..\..
+
