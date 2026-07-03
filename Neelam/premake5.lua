@@ -31,6 +31,7 @@ project "NeelamEngine"
 	includedirs {
 		"%{prj.name}",
 		"%{prj.name}/Common",
+		"%{prj.name}/Component",
 		"Framework"
 	}
 
