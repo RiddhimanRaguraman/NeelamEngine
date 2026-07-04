@@ -18,7 +18,8 @@ x86/
 Logs/
 Azul/
 
-Neelam/NeelamEditor/bin/
+Neelam/bin/
+Neelam/Libs/*/obj/
 Neelam/NeelamEditor/obj/
 Neelam/NeelamEngine/obj/
 *.sln

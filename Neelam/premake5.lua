@@ -5,16 +5,24 @@ workspace "Neelam"
 	configurations { "Debug", "Release" }
 	location "."
 
+	-- Compile each project's .cpp files across all CPU cores (MSVC /MP).
+	-- Inherited by every project in the workspace.
+	flags { "MultiProcessorCompile" }
+
+	-- Edit-and-Continue debug info (/ZI) disables /MP, so use plain /Zi.
+	-- Trade: no editing code mid-debug-session, but Debug builds go parallel.
+	editandcontinue "Off"
+
 	filter "system:windows"
 		systemversion "latest"
 	filter {}
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
--- Builds a Keenan library (Math, File) from source as its own DLL.
+-- Builds a library (Math, File, AnimTime) from source as its own DLL.
 --   name      : project name / Libs subfolder (e.g. "Math")
 --   apiPrefix : export-macro prefix (e.g. "MATH" -> MATH_USE_DLL, MATH_LIBRARY_EXPORTS)
-local function keenanLib(name, apiPrefix)
+local function defineLibrary(name, apiPrefix)
 	project(name)
 		location   ("Libs/" .. name)
 		language   "C++"
@@ -28,16 +36,24 @@ local function keenanLib(name, apiPrefix)
 
 		files {
 			"Libs/" .. name .. "/include/**.h",
+			"Libs/" .. name .. "/src/**.h",
 			"Libs/" .. name .. "/src/**.cpp"
 		}
 
 		includedirs {
 			"Libs/" .. name .. "/include",
+			"Libs/" .. name .. "/src",
 			"Framework"
 		}
 
 		links { "Framework" }
-		forceincludes { "Framework.h" }
+
+		-- Precompile the large, force-included Framework.h via pch.h to cut build
+		-- time. pch.h is force-included (not Framework.h) so the library sources
+		-- compile unchanged -- no need to add #include "pch.h" to each .cpp.
+		pchheader "pch.h"
+		pchsource ("Libs/" .. name .. "/src/pch.cpp")
+		forceincludes { "pch.h" }
 
 		defines {
 			apiPrefix .. "_USE_DLL",			-- turn on the dll interface
@@ -75,7 +91,7 @@ end
 --   name      : test project name  (e.g. "MathTest")
 --   apiPrefix : consumed lib's macro prefix (e.g. "MATH")
 --   libName   : lib project + Libs subfolder to test (e.g. "Math")
-local function keenanTest(name, apiPrefix, libName)
+local function defineUnitTest(name, apiPrefix, libName)
 	project(name)
 		location   ("Libs/" .. libName)
 		language   "C++"
@@ -89,7 +105,7 @@ local function keenanTest(name, apiPrefix, libName)
 		targetdir ("bin/" .. outputdir .. "/" .. libName)
 		objdir ("Libs/" .. libName .. "/obj/" .. outputdir .. "/%{prj.name}")
 
-		-- Some Keenan test suites use "*_Group.cpp" unity files that #include the
+		-- Some test suites use "*_Group.cpp" unity files that #include the
 		-- individual test .cpp files. Compiling both the group and the file it
 		-- includes defines every test twice (LNK2005). So exclude exactly the
 		-- files that a group #includes, and compile everything else -- the groups,
@@ -115,7 +131,11 @@ local function keenanTest(name, apiPrefix, libName)
 		}
 
 		links { "Framework", libName }		-- consume the lib DLL under test
-		forceincludes { "Framework.h" }
+
+		-- Precompile Framework.h (same rationale as the library helper above).
+		pchheader "pch.h"
+		pchsource ("Libs/" .. libName .. "/Test/pch.cpp")
+		forceincludes { "pch.h" }
 
 		defines {
 			apiPrefix .. "_USE_DLL",	-- consume via dllimport
@@ -174,12 +194,13 @@ project "NeelamEngine"
 		end
 	end
 
-	-- Framework (shared items) + the source-built Keenan libraries.
+	-- Framework (shared items) + the source-built libraries.
 	links { "Framework", "Math", "File", "AnimTime" }
 
-	forceincludes {
-		"Framework.h"
-	}
+	-- Precompile Framework.h via pch.h to cut build time (same as the libraries).
+	pchheader "pch.h"
+	pchsource "NeelamEngine/Dll_stuff/pch.cpp"
+	forceincludes { "pch.h" }
 
 	defines {
 		"MATH_USE_DLL",			-- consume Math via dllimport
@@ -215,14 +236,14 @@ project "NeelamEngine"
 	filter {}
 
 group "Libs"
-	keenanLib("Math", "MATH")
-	keenanLib("File", "FILE")
-	keenanLib("AnimTime", "ANIM_TIME")
+	defineLibrary("Math", "MATH")
+	defineLibrary("File", "FILE")
+	defineLibrary("AnimTime", "ANIM_TIME")
 group ""
 
 group "Tests"
-	keenanTest("MathTest", "MATH", "Math")
-	keenanTest("FileTest", "FILE", "File")
+	defineUnitTest("MathTest", "MATH", "Math")
+	defineUnitTest("FileTest", "FILE", "File")
 group ""
 
 group "Shared"
