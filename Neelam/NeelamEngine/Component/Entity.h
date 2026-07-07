@@ -4,8 +4,8 @@
 
 namespace Neelam
 {
-#define INIT_INFO (comp) namespace comp {struct init_info;}
-	INIT_INFO Transform; 
+#define INIT_INFO(comp) namespace comp {struct init_info;}
+	INIT_INFO(Transform);
 #undef INIT_INFO
 	namespace GameEntity
 	{

@@ -4,26 +4,25 @@
 
 namespace Neelam::Id
 {
-	using ID_type = u32;								// id type
-	constexpr u32 generation_bits{ 8 };						// generation bit count
-	constexpr u32 index_bits{ sizeof(ID_type) * 8 - generation_bits };	// index bit count
-	constexpr ID_type index_mask{ (ID_type{1} << index_bits) - 1 };	// index mask
+	using ID_type = uint32_t;													// id type
+	constexpr uint32_t generation_bits{ 8 };									// generation bit count
+	constexpr uint32_t index_bits{ sizeof(ID_type) * 8 - generation_bits };		// index bit count
+	constexpr ID_type index_mask{ (ID_type{1} << index_bits) - 1 };				// index mask
 	constexpr ID_type generation_mask{ (ID_type{1} << generation_bits) - 1 };	// generation mask
-	constexpr ID_type id_mask{ ~ID_type{0} };			// invalid id
+	constexpr ID_type id_mask{ ~ID_type{0} };									// invalid id
 
 	// smallest generation type
 	using generation_type =
 		std::conditional_t<generation_bits <= 16,
-		std::conditional_t<generation_bits <= 8, u8, u16>,
-		u32>;
+		std::conditional_t<generation_bits <= 8, uint8_t, uint16_t>,uint32_t>;
 
 	static_assert(sizeof(generation_type) * 8 >= generation_bits);
 	static_assert(sizeof(ID_type) - sizeof(generation_type) > 0);
 
-	inline bool id_valid(ID_type id) { return id != id_mask; }			// valid id check
-	inline ID_type Index(ID_type id) { return id & index_mask; }		// get index
+	inline bool id_valid(ID_type id) { return id != id_mask; }								// valid id check
+	inline ID_type Index(ID_type id) { return id & index_mask; }							// get index
 	inline ID_type generation(ID_type id) { return (id >> index_bits) & generation_mask; }	// get generation
-	inline ID_type New_generation(ID_type id)								// next generation
+	inline ID_type New_generation(ID_type id)												// next generation
 	{
 		const ID_type generation(Id::generation(id) + 1);
 		assert(generation < 255);
