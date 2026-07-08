@@ -7,11 +7,11 @@ namespace Neelam::Transform
 
 	struct init_info
 	{
-		// TODO: The last variable of vec4 to be the common multiplier 
-		//		 variable need to rework for position and scale
-		Azul::Vec4 Position;
+		// TODO: world matrix addition and maybe make this a class
+		//		 or use a ctor for struct
+		Azul::Vec3 Position;
 		Azul::Quat Rotation;
-		Azul::Vec4 Scale;
+		Azul::Vec3 Scale;
 	};
 
 	transform_id create_transform(const init_info, GameEntity::entity_id entity_id);

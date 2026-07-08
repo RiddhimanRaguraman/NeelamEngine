@@ -2,9 +2,10 @@
 
 #include "CommonHeaders.h"
 #include "IdHeader.h"
+#include "GameEntity.h"
 
 namespace Neelam::GameEntity
 {
-	DEFINE_TYPED_ID(entity_id);
+	
 
 }

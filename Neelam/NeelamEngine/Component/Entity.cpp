@@ -1,18 +1,27 @@
 #include "Entity.h"
 #include "MathEngine.h"
 
-
-Neelam::GameEntity::entity_id Neelam::GameEntity::Create_Game_Entity(const entity_info& info)
+namespace Neelam::GameEntity
 {
-    return entity_id();
-}
+    namespace {
+        Util::vector<Id::generation_type> generations;
+        Util::deque<entity_id>            free_ids;
+    }
+    entity Neelam::GameEntity::Create_Game_Entity(const entity_info& info)
+    {
+        assert(info.transform);
+        if (!info.transform)  return entity{};
 
-void Neelam::GameEntity::Remove_Game_Entity(entity_id id)
-{
-    
-}
 
-bool Neelam::GameEntity::is_alive(entity_id id)
-{
-    return false;
+    }
+
+    void Remove_Game_Entity(entity_id id)
+    {
+
+    }
+
+    bool is_alive(entity_id id)
+    {
+        return false;
+    }
 }
