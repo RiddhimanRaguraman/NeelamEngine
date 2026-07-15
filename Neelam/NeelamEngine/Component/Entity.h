@@ -9,13 +9,13 @@ namespace Neelam
 #undef INIT_INFO
 	namespace GameEntity
 	{
-		struct entity_info										// entity init info
+		struct entity_info									// entity init info
 		{
 			Transform::init_info* transform{ nullptr };
 		};
 
-		Entity Create_Game_Entity(const entity_info& info);	// To add Game Entity
-		void Remove_Game_Entity(Entity e);			        // remove game entity
-		bool is_alive(Entity e);							// entity alive check
+		NEELAM_API Entity Create_Game_Entity(const entity_info& info);	// To add Game Entity
+		NEELAM_API void Remove_Game_Entity(Entity e);					// remove game entity
+		NEELAM_API bool is_alive(Entity e);								// entity alive check
 	}
 }

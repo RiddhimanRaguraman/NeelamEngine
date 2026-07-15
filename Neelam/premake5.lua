@@ -203,6 +203,8 @@ project "NeelamEngine"
 	forceincludes { "pch.h" }
 
 	defines {
+		"NEELAM_USE_DLL",		-- this DLL's own API interface is active
+		"NEELAM_LIBRARY_EXPORTS",	-- and this project exports it (dllexport)
 		"MATH_USE_DLL",			-- consume Math via dllimport
 		"FILE_USE_DLL",			-- consume File via dllimport
 		"ANIM_TIME_USE_DLL",	-- consume AnimTime via dllimport
@@ -244,6 +246,83 @@ group ""
 group "Tests"
 	defineUnitTest("MathTest", "MATH", "Math")
 	defineUnitTest("FileTest", "FILE", "File")
+
+	-- Integration sandbox for the whole engine. Links NeelamEngine.dll (which
+	-- pulls in Math/File/AnimTime). Output stays inside the EngineTest folder,
+	-- separate from the editor, since this is just a testing setup.
+	project "EngineTest"
+		location "EngineTest"
+		language "C++"
+		kind "ConsoleApp"
+		cppdialect "C++17"
+		staticruntime "Off"
+		characterset ("MBCS")
+
+		-- keep this test's build output inside its own folder (not the editor's)
+		targetdir ("EngineTest/x64/%{cfg.buildcfg}")
+		objdir ("EngineTest/obj/" .. outputdir)
+
+		files {
+			"EngineTest/**.h",
+			"EngineTest/**.cpp"
+		}
+
+		includedirs {
+			"EngineTest",
+			"Framework",
+			"NeelamEngine",
+			"Libs/Math/include",
+			"Libs/File/include",
+			"Libs/AnimTime/include"
+		}
+
+		-- go through every subfolder (the engine's and this project's) and add it
+		-- as an include dir, so any header is reachable unprefixed (skips obj).
+		for _, dir in ipairs(os.matchdirs("NeelamEngine/**")) do
+			if not dir:find("obj") then includedirs { dir } end
+		end
+		for _, dir in ipairs(os.matchdirs("EngineTest/**")) do
+			if not dir:find("obj") then includedirs { dir } end
+		end
+
+		-- Link the engine (its NEELAM_API exports produce NeelamEngine.lib);
+		-- this also pulls in Math/File/AnimTime through the engine's references.
+		links { "Framework", "NeelamEngine" }
+
+		forceincludes { "Framework.h" }
+
+		defines {
+			"NEELAM_USE_DLL",	-- consume the engine API via dllimport
+			"MATH_USE_DLL",
+			"FILE_USE_DLL",
+			"ANIM_TIME_USE_DLL",
+			"_CONSOLE",
+			'WINDOWS_TARGET_PLATFORM="$(TargetPlatformVersion)"',
+			'SOLUTION_DIR=R"($(SolutionDir))"',
+			'TOOLS_VERSION=R"($(VCToolsVersion))"',
+			'LOCAL_WORKING_DIR=R"($(LocalDebuggerWorkingDirectory))"'
+		}
+
+		filter "configurations:Debug"
+			runtime "Debug"
+			symbols "On"
+			defines { "_DEBUG" }
+
+		filter "configurations:Release"
+			runtime "Release"
+			optimize "On"
+			defines { "NDEBUG" }
+
+		filter "action:vs2022"
+			toolset "v143"
+
+		filter "action:vs*"
+			-- copy the engine + lib DLLs (gathered in <solution>/x64/<cfg> by their
+			-- own post-builds) next to this exe so it runs from its own folder.
+			postbuildcommands {
+				'xcopy /Y /D "$(SolutionDir)x64\\$(Configuration)\\*.dll" "$(TargetDir)" > nul'
+			}
+		filter {}
 group ""
 
 group "Shared"

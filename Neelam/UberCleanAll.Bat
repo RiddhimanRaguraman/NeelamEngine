@@ -65,3 +65,7 @@ cd Libs\AnimTime
 call "CleanMe.Bat"
 cd ..\..
 
+cd EngineTest
+call "CleanMe.Bat"
+cd ..
+
