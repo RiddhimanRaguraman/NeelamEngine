@@ -1,10 +1,9 @@
 #pragma once
 #include "ComponentsCommon.h"
+#include "TransformComponent.h"
 
 namespace Neelam::Transform
 {
-	DEFINE_TYPED_ID(transform_id);
-
 	struct init_info
 	{
 		// TODO: world matrix addition and maybe make this a class
@@ -14,6 +13,6 @@ namespace Neelam::Transform
 		Azul::Vec3 Scale;
 	};
 
-	transform_id create_transform(const init_info, GameEntity::entity_id entity_id);
-	void remove_transform(transform_id id);
+	Component create_transform(const init_info, GameEntity::Entity entity);
+	void remove_transform(Component id);
 }

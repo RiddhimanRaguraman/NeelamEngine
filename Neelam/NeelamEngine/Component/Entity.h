@@ -14,8 +14,8 @@ namespace Neelam
 			Transform::init_info* transform{ nullptr };
 		};
 
-		entity Create_Game_Entity(const entity_info& info);	// To add Game Entity
-		void Remove_Game_Entity(entity_id id);			        // remove game entity
-		bool is_alive(entity_id id);							// entity alive check
+		Entity Create_Game_Entity(const entity_info& info);	// To add Game Entity
+		void Remove_Game_Entity(Entity e);			        // remove game entity
+		bool is_alive(Entity e);							// entity alive check
 	}
 }

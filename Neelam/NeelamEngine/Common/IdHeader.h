@@ -14,6 +14,7 @@ namespace Neelam::Id
 		constexpr ID_type generation_mask{ (ID_type{1} << generation_bits) - 1 };	// generation mask
 	}
 	constexpr ID_type invalid_id{ ~ID_type{0} };									// invalid id
+	constexpr uint32_t min_deleted_elements{ 1024 };
 
 	// smallest generation type
 	using generation_type =
@@ -23,20 +24,20 @@ namespace Neelam::Id
 	static_assert(sizeof(generation_type) * 8 >= Internal::generation_bits);
 	static_assert(sizeof(ID_type) - sizeof(generation_type) > 0);
 
-	inline bool id_valid(ID_type id) 												// valid id check
+	constexpr bool is_valid(ID_type id) 											// valid id check
 	{
 		return id != invalid_id;
 	}
 
-	inline ID_type Index(ID_type id)												// get index
+	constexpr ID_type Index(ID_type id)												// get index
 	{ 
 		ID_type index{ id & Internal::index_mask };
 		assert(index != Internal::index_mask);
 		return index; 
 	}										
 	
-	inline ID_type generation(ID_type id) { return (id >> Internal::index_bits) & Internal::generation_mask; }	// get generation
-	inline ID_type New_generation(ID_type id)																	// next generation
+	constexpr ID_type generation(ID_type id) { return (id >> Internal::index_bits) & Internal::generation_mask; }	// get generation
+	constexpr ID_type New_generation(ID_type id)																	// next generation
 	{
 		const ID_type generation(Id::generation(id) + 1);
 		assert(generation < (((u64)1 << Internal::generation_bits) - 1));
