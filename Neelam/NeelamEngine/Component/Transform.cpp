@@ -36,6 +36,15 @@ namespace Neelam::Transform
         assert(c.is_valid());
     }
 
+    void shutdown()
+    {
+        // purge() releases each raw block outright, leaving these file-scope
+        // containers holding nullptr before the leak check runs.
+        positions.purge();
+        rotations.purge();
+        scales.purge();
+    }
+
 
     Azul::Vec3 Component::getPos() const
     {

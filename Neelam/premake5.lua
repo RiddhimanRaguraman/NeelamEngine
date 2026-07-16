@@ -285,9 +285,11 @@ group "Tests"
 			if not dir:find("obj") then includedirs { dir } end
 		end
 
-		-- Link the engine (its NEELAM_API exports produce NeelamEngine.lib);
-		-- this also pulls in Math/File/AnimTime through the engine's references.
-		links { "Framework", "NeelamEngine" }
+		-- Link the engine (its NEELAM_API exports produce NeelamEngine.lib).
+		-- Math/File/AnimTime must be linked explicitly too: DLL linking is NOT
+		-- transitive -- any module that directly calls into a DLL (e.g. this test
+		-- constructing an Azul::Vec3) needs that DLL's own import lib.
+		links { "Framework", "NeelamEngine", "Math", "File", "AnimTime" }
 
 		forceincludes { "Framework.h" }
 

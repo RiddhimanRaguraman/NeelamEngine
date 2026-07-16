@@ -67,6 +67,15 @@ namespace Neelam::GameEntity
         return (generations[index] == Id::generation(id) && transforms[index].is_valid());
     }
 
+    void shutdown()
+    {
+        // purge() releases each raw block outright, leaving these file-scope
+        // containers holding nullptr before the leak check runs.
+        transforms.purge();
+        generations.purge();
+        free_ids.purge();
+    }
+
     Transform::Component Entity::transform() const
     {
         assert(is_alive(*this));

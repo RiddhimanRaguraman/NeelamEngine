@@ -15,4 +15,6 @@ namespace Neelam::Transform
 
 	Component create_transform(const init_info, GameEntity::Entity entity);
 	void remove_transform(Component id);
+
+	NEELAM_API void shutdown();			// release the transform arrays
 }

@@ -1,11 +1,14 @@
 #include "Entity.h"
+#include "Transform.h"
 
-// Engine integration test sandbox. Framework.h is force-included by the build,
-// and NeelamEngine (+ Math/File/AnimTime) is linked in. Add your tests here.
 int main()
 {
-    // Referencing an exported engine symbol confirms EngineTest links NeelamEngine.
-    auto* create = &Neelam::GameEntity::Create_Game_Entity;
-    (void)create;
-    return 0;
+	Test::RunTests();
+
+	// Release the engine's file-scope arrays here, at a point we control.
+	// This has to happen before the memory tracker's exit report, and in a
+	// deterministic order (entities first, then the transforms they index into)
+	// -- static destruction order across translation units is unspecified.
+	Neelam::GameEntity::shutdown();
+	Neelam::Transform::shutdown();
 }
