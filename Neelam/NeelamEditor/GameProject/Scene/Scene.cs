@@ -56,15 +56,18 @@ namespace NeelamEditor.GameProject
         public ICommand AddGameEntityCommand { get; private set; }
         public ICommand RemoveGameEntityCommand { get; private set; }
 
-        private void AddGameEntity(GameEntity entity)
+        private void AddGameEntity(GameEntity entity, int index = -1)
         {
             Debug.Assert(!_gameEntities.Contains(entity));
-            _gameEntities.Add(entity);
+            entity.IsActive = IsActive;
+            if (index == -1) _gameEntities.Add(entity);
+            else _gameEntities.Insert(index, entity);
         }
 
         private void RemoveGameEntity(GameEntity entity)
         {
             Debug.Assert(_gameEntities.Contains(entity));
+            entity.IsActive = false;
             _gameEntities.Remove(entity);
         }
 
@@ -76,7 +79,10 @@ namespace NeelamEditor.GameProject
             if (_gameEntities == null) _gameEntities = new ObservableCollection<GameEntity>();
             GameEntities = new ReadOnlyObservableCollection<GameEntity>(_gameEntities);
             OnPropertyChanged(nameof(GameEntities));
-
+            foreach (var entity in GameEntities)
+            {
+                entity.IsActive = IsActive;
+            }
             // Add — caller supplies a pre-constructed entity (could be any subclass).
             AddGameEntityCommand = new RelayCommand<GameEntity>(x =>
             {
@@ -84,7 +90,7 @@ namespace NeelamEditor.GameProject
                 var entityIndex = _gameEntities.Count - 1;
                 Project.undoredo.Add(new UndoRedoAction(
                     () => RemoveGameEntity(x),
-                    () => _gameEntities.Insert(entityIndex, x),
+                    () => AddGameEntity(x, entityIndex),
                     $"Add {x.Name} to {Name}"));
             });
 
@@ -94,7 +100,7 @@ namespace NeelamEditor.GameProject
                 var entityIndex = _gameEntities.IndexOf(x);
                 RemoveGameEntity(x);
                 Project.undoredo.Add(new UndoRedoAction(
-                    () => _gameEntities.Insert(entityIndex, x),
+                    () => AddGameEntity(x, entityIndex),
                     () => RemoveGameEntity(x),
                     $"Remove {x.Name}"));
             });

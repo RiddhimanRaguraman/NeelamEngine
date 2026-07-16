@@ -8,7 +8,11 @@
     <UseWPF>true</UseWPF>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>AnyCPU;x64</Platforms>
-    <BaseOutputPath>..\x64\</BaseOutputPath>
+    <!-- MSBuild appends "$(Platform)\$(Configuration)\" for non-AnyCPU platforms, so
+         this resolves to ..\x64\Debug\ : the same folder the engine and lib DLLs are
+         copied to. The exe must sit beside them or P/Invoke cannot load NeelamEngine.dll.
+         (A base of "..\x64\" would double up into x64\x64\Debug.) -->
+    <BaseOutputPath>..\</BaseOutputPath>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
 
@@ -22,6 +26,7 @@
     <Version>0.1.9</Version>
     <FileVersion>0.1.9</FileVersion>
     <AssemblyVersion>0.1.9.0</AssemblyVersion>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

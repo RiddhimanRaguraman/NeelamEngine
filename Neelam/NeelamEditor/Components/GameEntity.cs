@@ -1,4 +1,5 @@
 using NeelamEditor.Common;
+using NeelamEditor.EngineWrapper;
 using NeelamEditor.GameProject;
 using NeelamEditor.Utilities;
 using System.Collections.ObjectModel;
@@ -17,6 +18,42 @@ namespace NeelamEditor.Components
     [KnownType(typeof(Transform))]
     class GameEntity : ViewModelBase
     {
+        private int _entityId = Id.INVALID_ID;
+        public int EntityId
+        {
+            get => _entityId;
+            set
+            {
+                if (_entityId != value)
+                {
+                    _entityId = value;
+                    OnPropertyChanged(nameof(EntityId));
+                }
+            }
+        }
+        private bool _isActive;
+        public bool IsActive
+        {
+            get => _isActive;
+            set
+            {
+                if (_isActive != value)
+                {
+                    _isActive = value;
+                    if(_isActive)
+                    {
+                        EntityId = EngineAPI.CreateGameEntity(this);
+                        Debug.Assert(Id.IsValid(_entityId));
+                    }
+                    else
+                    {
+                        EngineAPI.RemoveGameEntity(this);
+                    }
+                    OnPropertyChanged(nameof(IsActive));
+                }
+            }
+        }
+
         private bool _isEnabled = true;
         [DataMember]
         public bool IsEnabled

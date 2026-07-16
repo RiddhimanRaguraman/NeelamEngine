@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "NeelamEditor": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}

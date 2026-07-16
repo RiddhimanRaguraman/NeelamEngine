@@ -350,4 +350,12 @@ externalproject "NeelamEditor"
 	uuid (os.uuid("NeelamEditor"))
 	kind "WindowedApp"
 	language "C#"
+
+	-- The editor loads NeelamEngine.dll via P/Invoke, so there is no compile-time
+	-- reference for VS to infer a build order from. Without this, hitting F5 builds
+	-- ONLY the editor and the engine DLL is stale (or absent -- e.g. the first
+	-- Release build), giving a DllNotFoundException at runtime.
+	-- This records a solution-level dependency, which also pulls in Math/File/AnimTime
+	-- through the engine's own references.
+	dependson { "NeelamEngine" }
 group ""
