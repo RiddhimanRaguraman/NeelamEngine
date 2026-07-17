@@ -45,8 +45,20 @@ namespace NeelamEditor.GameProject
     // and creates the project folder + files when the user confirms.
     class NewProject : ViewModelBase
     {
-        private readonly string _templatePath = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, @"..\..\NeelamEditor\ProjectTemplates"));
+        private static readonly string _templatePath = ResolveTemplatePath();
+
+        // A packaged build ships ProjectTemplates next to the exe; a dev build runs out
+        // of Neelam\x64\<cfg>\ and reads them straight from the project folder. Probe for
+        // the packaged copy first and fall back, so one binary handles both layouts --
+        // the old code only knew the dev path and died on startup once installed.
+        private static string ResolveTemplatePath()
+        {
+            var packaged = Path.Combine(AppContext.BaseDirectory, "ProjectTemplates");
+            if (Directory.Exists(packaged)) return packaged;
+
+            return Path.GetFullPath(
+                Path.Combine(AppContext.BaseDirectory, @"..\..\NeelamEditor\ProjectTemplates"));
+        }
 
         private string _Projectname = "NewProject";
         // Project name entered in the Name field. Triggers validation on change.
