@@ -9,6 +9,7 @@ namespace Neelam::GameEntity
 
 	class Entity
 	{
+		// TODO: big 4 needs to be checked
 	public :
 		constexpr explicit Entity(entity_id id) : _id{ id } {}
 		constexpr Entity() : _id{ Id::invalid_id } {}
