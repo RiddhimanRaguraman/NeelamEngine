@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Text;
 using System.Windows;
+using NeelamEditor.EngineWrapper;
 using NeelamEditor.GameProject;
 
 namespace NeelamEditor
@@ -24,6 +25,15 @@ namespace NeelamEditor
         private void OnMainWindowClosing(object sender, CancelEventArgs e)
         {
             Closing -= OnMainWindowClosing;
+
+            // Belt and braces for the renderer. RenderView.Unloaded normally disposes
+            // the HwndHost, which shuts the engine down -- but WPF does not guarantee
+            // Unloaded fires for the content tree when a window closes. Skipping
+            // Shutdown would leave Vulkan objects alive at process exit and turn the
+            // framework's leak report red. EngineShutdown is idempotent, so calling it
+            // here as well is free when the view already did it.
+            EngineAPI.ShutdownRenderer();
+
             Project.Current?.Unload();
         }
         private void OpenProjectBrowserDialog()

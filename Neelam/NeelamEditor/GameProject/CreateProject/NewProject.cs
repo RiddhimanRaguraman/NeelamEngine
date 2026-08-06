@@ -200,6 +200,11 @@ namespace NeelamEditor.GameProject
                 var projectPath = Path.GetFullPath(Path.Combine(path + $"{ProjectName}{Project.Extension}"));
                 File.WriteAllText(projectPath, projectXml);
 
+                // Seed the project's own game code (Game.h / Game.cpp -- the default
+                // triangle) from the template. Per-template rather than one shared copy
+                // so a First Person / Top Down template can ship a different starting
+                // point later without touching this method.
+                CopyTemplateGameCode(template, path);
 
                 return path;
             }
@@ -208,6 +213,26 @@ namespace NeelamEditor.GameProject
                 Debug.WriteLine(ex.Message);
                 Logger.Log(MessageTypes.Error, $"Failed to create {ProjectName}");
                 throw;
+            }
+        }
+
+        // Copies <template>\GameCode\* into <project>\GameCode\.
+        //
+        // The GameCode folder itself already exists -- it comes from the template's
+        // Folders list, same as Content and .neelam -- so this only fills it. Missing
+        // seed files are not an error: a template is still usable without game code,
+        // and failing project creation over it would be the wrong trade.
+        private static void CopyTemplateGameCode(ProjectTemplate template, string projectPath)
+        {
+            var source = Path.Combine(Path.GetDirectoryName(template.ProjectFilePath), "GameCode");
+            if (!Directory.Exists(source)) return;
+
+            var destination = Path.Combine(projectPath, "GameCode");
+            Directory.CreateDirectory(destination);
+
+            foreach (var file in Directory.GetFiles(source))
+            {
+                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), true);
             }
         }
 

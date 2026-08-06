@@ -7,7 +7,8 @@
              mc:Ignorable="d"
              Background="{StaticResource BaseBrush}"
              d:DesignHeight="450" d:DesignWidth="800">
-    <!-- Placeholder host for the Vulkan render surface. Native Win32 hwnd
-         will be embedded here later via HwndHost. -->
-    <Grid/>
+    <!-- The Vulkan surface is a native child HWND, so it is added from the
+         code-behind (HwndHost cannot be declared usefully in XAML here it
+         needs the engine brought up inside BuildWindowCore). -->
+    <Grid x:Name="_surfaceHost"/>
 </UserControl>

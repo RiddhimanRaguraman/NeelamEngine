@@ -107,5 +107,52 @@ namespace NeelamEditor.EngineWrapper
         {
             RemoveGameEntity(entity.EntityId);
         }
+
+        #region Renderer
+
+        // The engine's Initialize / Tic / Shutdown / GetWindowHandle, exported as
+        // extern "C" from Dll_stuff\GameAPI.cpp. They were written with C-compatible
+        // signatures from the start so no marshalling beyond IntPtr is needed here.
+        //
+        // THREAD AFFINITY: all four must be called from one and the same thread. That
+        // is the engine's rule -- every Vulkan call belongs to the thread that called
+        // Initialize. RenderView drives them from BuildWindowCore / the Rendering
+        // event / DestroyWindowCore, which WPF all raises on the UI thread, so the
+        // rule holds without any extra machinery.
+
+        [DllImport(_dll)]
+        private static extern int EngineInitialize(IntPtr hParentWnd);
+
+        [DllImport(_dll)]
+        private static extern void EngineTic();
+
+        [DllImport(_dll)]
+        private static extern void EngineShutdown();
+
+        [DllImport(_dll)]
+        private static extern IntPtr EngineGetWindowHandle();
+
+        // Creates the render surface as a child of hParentWnd and returns its HWND,
+        // ready to hand back from HwndHost.BuildWindowCore. IntPtr.Zero would ask the
+        // engine for a standalone top-level window, which is never what the editor
+        // wants, so it is rejected rather than silently opening a second window.
+        public static IntPtr InitializeRenderer(IntPtr hParentWnd)
+        {
+            Debug.Assert(hParentWnd != IntPtr.Zero);
+
+            EngineInitialize(hParentWnd);
+            return EngineGetWindowHandle();
+        }
+
+        // One frame. Cheap enough to call per composition tick; it returns immediately
+        // if the renderer is not up.
+        public static void Tic() => EngineTic();
+
+        // Tears the renderer down, including the HWND. Idempotent, and a later
+        // InitializeRenderer brings it straight back -- that is what makes closing and
+        // reopening a project work.
+        public static void ShutdownRenderer() => EngineShutdown();
+
+        #endregion
     }
 }
