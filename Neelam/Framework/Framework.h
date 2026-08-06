@@ -146,11 +146,36 @@ constexpr const char* THREAD_FRAMEWORK_VER = "1.31";
 //
 // ---------------------------------------------------------------------------
 
-// Enable Thread_Framework here <search>: THREAD_FRAMEWORK_START
-//#define USE_THREAD_FRAMEWORK
+// ---------------------------------------------------------------------------
+// FEATURE TIERS -- set PER PROJECT in premake5.lua, not here.
+//    <search>: THREAD_FRAMEWORK_START
+//
+// This header is force-included into every project in the solution, but they do
+// not all want the same framework:
+//
+//   Libs + Tests (Math / File / AnimTime / MathTest / FileTest)
+//        MEM_TRACKER_ENABLED
+//        Memory tracking only. No thread-tagged prints and -- the point -- no
+//        Vulkan, so those projects never need the Vulkan SDK on their include
+//        path and never parse volk / VMA.
+//
+//   App (Vulkan_Baseline)
+//        MEM_TRACKER_ENABLED + USE_THREAD_FRAMEWORK + USE_VULKAN_FRAMEWORK
+//        The Vulkan framework is the top tier and needs all three: it reports
+//        leaks through MemTrace and prints through Debug::out, which belongs to
+//        the thread framework.
+//
+// Defining them here instead would force every project into the top tier --
+// which is exactly why they moved out to the .lua.
+// ---------------------------------------------------------------------------
 
-// Comment out this line to turn off memory tracking
-#define MEM_TRACKER_ENABLED
+#if defined(USE_VULKAN_FRAMEWORK) && !defined(MEM_TRACKER_ENABLED)
+#error "USE_VULKAN_FRAMEWORK requires MEM_TRACKER_ENABLED -- VkLeaks are reported through MemTrace."
+#endif
+
+#if defined(USE_VULKAN_FRAMEWORK) && !defined(USE_THREAD_FRAMEWORK)
+#error "USE_VULKAN_FRAMEWORK requires USE_THREAD_FRAMEWORK -- the Vulkan framework prints through Debug::out."
+#endif
 
 // Enable for verbose DLL headers (to insure each lib is using same framework)
 //#define VERBOSE_DLL_INFO
@@ -2142,6 +2167,14 @@ constexpr const char* MEMORY_TRACKING_ENABLE_STRING = "enabled         ";
 constexpr const char* MEMORY_TRACKING_ENABLE_STRING = "--> DISABLED <--";
 #endif
 
+// NOTE: do NOT add USE_THREAD_FRAMEWORK / USE_VULKAN_FRAMEWORK tier strings to
+// the banner above. The banner is printed by the FIRST module to run
+// ProcessBegin, and a DLL's static initializers run before the exe's -- so the
+// printer is always a lib DLL, which is in neither tier. It would honestly
+// report its own tiers and dishonestly look like a statement about the program.
+// Same trap as the VkLeak dump.
+// The app prints its own tiers from Engine::Initialize instead.
+
 class MemTrace
 {
 private:
@@ -2203,6 +2236,29 @@ public:
 			this->lRequest = pTmp->lRequest;
 		}
 	};
+
+// MEM_TRACKER_ENABLED, *not* USE_VULKAN_FRAMEWORK: nothing below names a Vulkan
+// type (that is the whole point of holding VkDeviceMemory as void*), and the
+// process-end report is printed by whichever module unwinds LAST -- which is a
+// lib DLL, not the app. Gate this on the Vulkan tier and the dump compiles out
+// of exactly the module that ends up printing, so VkLeaks silently vanish.
+#if defined(_DEBUG) && defined(MEM_TRACKER_ENABLED)
+	// Shadow record for one Vulkan DEVICE allocation (a VkDeviceMemory block).
+	// GPU memory is not CRT memory, so -- exactly like the CUDA device trick --
+	// we mirror each block with a small _CLIENT_BLOCK on the debug heap. If the
+	// block leaks (the shadow is never freed) it rides the process-end leak dump
+	// (privVkDumpLeaks). Host (CPU) Vulkan allocations are ordinary CRT memory
+	// and need no shadow -- see VkHostAlloc / VkHostFree.
+	//
+	// VkDeviceMemory is stored as a plain void* so Framework.h stays free of any
+	// Vulkan include; the caller (Allocator) casts the handle in.
+	struct _VkMemTrackerHeader
+	{
+		void*  deviceMemory;	// the VkDeviceMemory handle, as void*
+		size_t size;			// bytes
+		char   allocName[32];	// e.g. "VMA-device"
+	};
+#endif
 
 	struct _MemTrackingHeader_comp
 	{
@@ -2267,6 +2323,10 @@ public:
 		MemLeakCount_Start{ 0 },
 		PlacementNew_Count{ 0 },
 		PlacementNew_mtx()
+#if defined(_DEBUG) && defined(MEM_TRACKER_ENABLED)
+		, vk_mtx()
+		, vk_leak{ 0 }
+#endif
 	{
 		memset(&privBuff[0], 0, MemTraceBuffSize);
 		this->PlacementNew_Count = 0;
@@ -2607,6 +2667,14 @@ public:
 
 						assert(MemTrace::GetPlacementNewCount() == 0);
 					}
+
+#if defined(_DEBUG) && defined(MEM_TRACKER_ENABLED)
+					// Vulkan DEVICE-memory (VkDeviceMemory) leaks -- shadow
+					// _CLIENT_BLOCKs walked on the live heap. Self-contained: it
+					// prints its own header only if there is something to report,
+					// independent of the normal-block dump below.
+					rTrace.privVkDumpLeaks();
+#endif
 
 					if (NormBlockLeakCount > 0)
 					{
@@ -3202,6 +3270,143 @@ public:
 		rTrace.PlacementNew_Count++;
 	}
 
+#if defined(_DEBUG) && defined(MEM_TRACKER_ENABLED)
+	//---------------------------------------------------------------------
+	// Vulkan memory tracking (mirrors the CUDA device-tracking pattern).
+	//
+	//   DEVICE (VkDeviceMemory): not CRT memory -> shadow each block with a
+	//     _CLIENT_BLOCK (VkMemInsert), drop it in VkMemRemove. Leaks reported
+	//     at process end by privVkDumpLeaks.
+	//   HOST (VkAllocationCallbacks): ordinary CRT memory -> allocate it
+	//     tracked with _aligned_*_dbg (VkHostAlloc/Realloc/Free); leaks ride
+	//     the normal leak report.
+	//
+	// Wire these into VMA via VmaDeviceMemoryCallbacks + VkAllocationCallbacks
+	// (see Allocator.cpp). All of it is a no-op when USE_VULKAN_FRAMEWORK is off.
+	//---------------------------------------------------------------------
+
+	// ---- device (GPU) memory: _CLIENT_BLOCK shadow ----
+	static void VkMemInsert(void* deviceMemory, size_t size, const char* file, int line, const char* allocName) noexcept
+	{
+		if (deviceMemory == nullptr)
+			return;
+		MemTrace& rTrace = MemTrace::privGetRefInstance();
+		std::lock_guard<std::mutex> lock(rTrace.vk_mtx);
+
+		_VkMemTrackerHeader* pHeader = static_cast<_VkMemTrackerHeader*>(
+			_malloc_dbg(sizeof(_VkMemTrackerHeader), _CLIENT_BLOCK, file, line));
+		if (pHeader != nullptr)
+		{
+			pHeader->deviceMemory = deviceMemory;
+			pHeader->size         = size;
+			strcpy_s(pHeader->allocName, 32, allocName);
+			rTrace.vk_leak++;
+		}
+	}
+
+	static void VkMemRemove(void* deviceMemory) noexcept
+	{
+		if (deviceMemory == nullptr)
+			return;
+		MemTrace& rTrace = MemTrace::privGetRefInstance();
+		std::lock_guard<std::mutex> lock(rTrace.vk_mtx);
+
+		_CrtMemState state{ 0 };
+		_CrtMemCheckpoint(&state);
+		_CrtMemBlockHeader* pHdr = reinterpret_cast<_CrtMemBlockHeader*>(state.pBlockHeader);
+
+		while (pHdr != nullptr)
+		{
+			if (pHdr->nBlockUse == _CLIENT_BLOCK && pHdr->nDataSize == sizeof(_VkMemTrackerHeader))
+			{
+				_VkMemTrackerHeader* pHeader = reinterpret_cast<_VkMemTrackerHeader*>(pHdr + 1);
+				if (pHeader->deviceMemory == deviceMemory)
+				{
+					_free_dbg(pHeader, _CLIENT_BLOCK);
+					if (rTrace.vk_leak > 0)
+						rTrace.vk_leak--;
+					break;
+				}
+			}
+			pHdr = pHdr->pBlockHeaderNext;
+		}
+	}
+
+	// ---- host (CPU) memory: ordinary tracked CRT allocations ----
+	// (Vulkan host allocations require alignment, so route through the aligned
+	// debug allocator -- same one the framework uses for Align16.)
+	static void* VkHostAlloc(size_t size, size_t alignment, const char* file, int line) noexcept
+	{
+		return _aligned_malloc_dbg(size, alignment, file, line);
+	}
+
+	static void* VkHostRealloc(void* pOriginal, size_t size, size_t alignment, const char* file, int line) noexcept
+	{
+		return _aligned_realloc_dbg(pOriginal, size, alignment, file, line);
+	}
+
+	static void VkHostFree(void* pMemory) noexcept
+	{
+		_aligned_free_dbg(pMemory);
+	}
+
+	static int VkLeakCount() noexcept
+	{
+		MemTrace& rTrace = MemTrace::privGetRefInstance();
+		std::lock_guard<std::mutex> lock(rTrace.vk_mtx);
+		return rTrace.vk_leak;
+	}
+
+	// ---- process-end dump of leaked DEVICE blocks (walks the live heap) ----
+	void privVkDumpLeaks() noexcept
+	{
+		std::lock_guard<std::mutex> lock(this->vk_mtx);
+
+		_CrtMemState state{ 0 };
+		_CrtMemCheckpoint(&state);
+		_CrtMemBlockHeader* pHdr = reinterpret_cast<_CrtMemBlockHeader*>(state.pBlockHeader);
+
+		size_t index      = 0;
+		size_t totalBytes = 0;
+		bool   headerDone = false;
+
+		while (pHdr != nullptr)
+		{
+			if (pHdr->nBlockUse == _CLIENT_BLOCK && pHdr->nDataSize == sizeof(_VkMemTrackerHeader))
+			{
+				_VkMemTrackerHeader* pTracker = reinterpret_cast<_VkMemTrackerHeader*>(pHdr + 1);
+
+				if (!headerDone)
+				{
+					this->privOut("------------------------------------------------------\n");
+					this->privOut(">>>   Vulkan Device Memory: Leaks detected         <<<\n");
+					this->privOut(">>>   Double-click on file string to Leak location <<<\n");
+					this->privOut("------------------------------------------------------\n");
+					this->privOut("\n");
+					headerDone = true;
+				}
+
+				const char* pFull = pHdr->szFileName;
+				const char* pFile = (pFull != nullptr) ? this->privStripDir(pFull) : "unknown";
+				this->privOut("VkLeak(%d)  %zu bytes  %s  %s \n", (int)index, pTracker->size, pTracker->allocName, pFile);
+				if (pFull != nullptr)
+					this->privOut("   %s(%d) : <double-click> \n\n", pFull, pHdr->nLine);
+				else
+					this->privOut("\n");
+
+				totalBytes += pTracker->size;
+				index++;
+			}
+			pHdr = pHdr->pBlockHeaderNext;
+		}
+
+		if (headerDone)
+		{
+			this->privOut("     Vulkan device leaks: %d    total: %zu bytes\n\n", (int)index, totalBytes);
+		}
+	}
+#endif
+
 	static void UnitTest_MemLeakCheck_Disable_Proxy()
 	{
 		MemTrace& rTrace = MemTrace::privGetRefInstance();
@@ -3271,6 +3476,11 @@ public:
 
 	int PlacementNew_Count;
 	std::mutex PlacementNew_mtx;
+
+#if defined(_DEBUG) && defined(MEM_TRACKER_ENABLED)
+	std::mutex vk_mtx;
+	int        vk_leak;
+#endif
 };
 
 //============================================
@@ -4819,5 +5029,512 @@ using namespace std::chrono;
 //    v.3.92 - release mode AllocRefTracker()
 
 #endif
+
+// ===========================================================================
+//                          VULKAN FRAMEWORK
+//     <search>: VULKAN_FRAMEWORK_START
+//
+// The top tier (see FEATURE TIERS at the top of this file). Everything Vulkan
+// that is FRAMEWORK -- not engine -- lives here:
+//
+//     the volk / VMA includes        the one place <Volk/volk.h> is pulled in
+//     vkResultToString / VK_Try      VkResult -> assert + exit
+//     Neelam::vk::Validation         layer + debug-messenger plumbing
+//     Neelam::vk::VulkanAllocator    the VmaAllocator, as a singleton, with
+//                                    MemTrace wired into it
+//
+// Why the allocator is here and not an engine class: it is the thing that
+// hands VMA the tracking callbacks. Keeping it in the engine meant every
+// engine build of Allocator.cpp carried a #if defined(USE_VULKAN_FRAMEWORK)
+// block -- tracking leaking into code that should not know it exists. Now the
+// engine just asks for an allocator and the tracking is unconditional inside
+// the framework, exactly like malloc() is quietly _malloc_dbg() above.
+//
+// It is a SINGLETON because there is precisely one VmaAllocator per process
+// (one logical device), and because Swapchain / future buffer + texture code
+// all need it without the Engine having to thread a handle down to them.
+// ===========================================================================
+
+#ifdef USE_VULKAN_FRAMEWORK
+
+#ifndef VULKAN_FRAMEWORK_H
+#define VULKAN_FRAMEWORK_H
+
+// volk is the single Vulkan include for the whole solution. It defines every
+// vk* name as a function POINTER that volkInitialize / volkLoadInstance /
+// volkLoadDevice fill in at runtime; the definitions are compiled once, by
+// Framework/VulkanImpl.cpp. Only DECLARATIONS come in here -- this header is
+// force-included into every TU, and a definition may exist only once in the
+// program. VK_NO_PROTOTYPES and VK_USE_PLATFORM_WIN32_KHR are
+// project-level defines (premake5.lua) -- only projects in the Vulkan tier set
+// them, which is why this include cannot be unconditional.
+#include <Volk/volk.h>
+
+// VMA declarations. Barricaded: the memory-tracking macros above rewrite `new`
+// into new(_NORMAL_BLOCK, __FILE__, __LINE__), which turns VMA's PLACEMENT new
+// into a syntax error. Save + neutralize them across this include only, then
+// put them back -- balanced, so every `new` after this point is still tracked.
+// (The framework's AZUL_PLACEMENT_NEW_BEGIN/END are the sanctioned form, but
+// they emit runtime statements and so only work inside a function body.)
+#pragma push_macro("new")
+#pragma push_macro("malloc")
+#pragma push_macro("free")
+#pragma push_macro("calloc")
+#pragma push_macro("realloc")
+#undef new
+#undef malloc
+#undef free
+#undef calloc
+#undef realloc
+
+#include <vma/vk_mem_alloc.h>
+
+#pragma pop_macro("realloc")
+#pragma pop_macro("calloc")
+#pragma pop_macro("free")
+#pragma pop_macro("malloc")
+#pragma pop_macro("new")
+
+// --------------------------------------------------------------------------
+//                      vkAssert
+// - Prints the VkResult to the debug output and behaves like an assert()
+// - Instead of  if(res != VK_SUCCESS) return false;  use  VK_Try(fn(args));
+// - It reports the error name and where it was called from
+//
+// - VkResult is NOT an HRESULT, so there is no system message table for
+//   Vulkan. The names come from the switch below.
+// - Only NEGATIVE codes are errors. VK_SUCCESS is 0 and the positive codes are
+//   non-error statuses (VK_TIMEOUT, VK_SUBOPTIMAL_KHR, ...), so the test is
+//   "< 0" and not "!= VK_SUCCESS" -- otherwise a merely suboptimal swapchain
+//   would kill the process once presenting starts.
+// --------------------------------------------------------------------------
+
+static inline const char *vkResultToString(VkResult result) noexcept
+{
+	switch (result)
+	{
+		// Success / non-error statuses
+	case VK_SUCCESS:						return "VK_SUCCESS";
+	case VK_NOT_READY:						return "VK_NOT_READY";
+	case VK_TIMEOUT:						return "VK_TIMEOUT";
+	case VK_EVENT_SET:						return "VK_EVENT_SET";
+	case VK_EVENT_RESET:					return "VK_EVENT_RESET";
+	case VK_INCOMPLETE:						return "VK_INCOMPLETE";
+	case VK_SUBOPTIMAL_KHR:					return "VK_SUBOPTIMAL_KHR";
+
+		// Errors -- what vkCreateInstance hands back
+	case VK_ERROR_OUT_OF_HOST_MEMORY:		return "VK_ERROR_OUT_OF_HOST_MEMORY";
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:		return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+	case VK_ERROR_INITIALIZATION_FAILED:	return "VK_ERROR_INITIALIZATION_FAILED";
+	case VK_ERROR_LAYER_NOT_PRESENT:		return "VK_ERROR_LAYER_NOT_PRESENT";
+	case VK_ERROR_EXTENSION_NOT_PRESENT:	return "VK_ERROR_EXTENSION_NOT_PRESENT";
+	case VK_ERROR_INCOMPATIBLE_DRIVER:		return "VK_ERROR_INCOMPATIBLE_DRIVER";
+
+		// Errors -- general device / object failures
+	case VK_ERROR_DEVICE_LOST:				return "VK_ERROR_DEVICE_LOST";
+	case VK_ERROR_MEMORY_MAP_FAILED:		return "VK_ERROR_MEMORY_MAP_FAILED";
+	case VK_ERROR_FEATURE_NOT_PRESENT:		return "VK_ERROR_FEATURE_NOT_PRESENT";
+	case VK_ERROR_TOO_MANY_OBJECTS:			return "VK_ERROR_TOO_MANY_OBJECTS";
+	case VK_ERROR_FORMAT_NOT_SUPPORTED:		return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+	case VK_ERROR_FRAGMENTED_POOL:			return "VK_ERROR_FRAGMENTED_POOL";
+	case VK_ERROR_OUT_OF_POOL_MEMORY:		return "VK_ERROR_OUT_OF_POOL_MEMORY";
+	case VK_ERROR_INVALID_EXTERNAL_HANDLE:	return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+	case VK_ERROR_UNKNOWN:					return "VK_ERROR_UNKNOWN";
+
+		// Errors -- surface / swapchain (WSI)
+	case VK_ERROR_SURFACE_LOST_KHR:			return "VK_ERROR_SURFACE_LOST_KHR";
+	case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:	return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+	case VK_ERROR_OUT_OF_DATE_KHR:			return "VK_ERROR_OUT_OF_DATE_KHR";
+	case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:	return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+	case VK_ERROR_VALIDATION_FAILED_EXT:	return "VK_ERROR_VALIDATION_FAILED_EXT";
+
+	default:								return "Unknown VkResult";
+	}
+}
+
+static inline void vkAssertImpl(VkResult result, const char *file, int line) noexcept
+{
+	if (result < 0)
+	{
+		// Called out separately because it is NOT a bug in this code -- a TDR,
+		// driver update or GPU reset produces it, and chasing it as an app bug
+		// wastes an afternoon. The frame loop catches it at acquire/submit/
+		// present and shuts down cleanly; reaching HERE means it surfaced from
+		// some other call, which is worth knowing.
+		if (result == VK_ERROR_DEVICE_LOST)
+		{
+			Debug::out("*** VK_ERROR_DEVICE_LOST -- the GPU went away (TDR / driver "
+				"update / GPU reset). Not an application bug. ***\n");
+		}
+
+		// Print the raw code alongside the name so an enum the switch does not
+		// know yet is still identifiable from the log.
+		Debug::out("%s(%d): <double-click> \nvkAssert failed: %s (%d)\n",
+			file,
+			line,
+			vkResultToString(result),
+			(int)result);
+
+		assert(false);
+		ExitProcess((UINT)result);
+	}
+}
+
+// Macro to call the assertion for Vulkan Code
+#define VK_Try(expr) vkAssertImpl((expr), __FILE__, __LINE__)
+
+// --------------------------------------------------------------------------
+//                      Validation layer helpers
+//
+// All the debug-messenger boilerplate lives here so the Instance code that
+// USES it stays short and readable. Instance just holds the messenger handle
+// and calls Validation::IsSupported / FillMessengerInfo / CreateMessenger /
+// DestroyMessenger. See Instance.cpp.
+//
+// Validation is Debug-only (Validation::Enabled): the layer adds real per-call
+// overhead you do not want in Release.
+// --------------------------------------------------------------------------
+namespace Neelam::vk::Validation
+{
+#ifdef _DEBUG
+	static const bool Enabled = true;
+#else
+	static const bool Enabled = false;
+#endif
+
+	// The single layer we ask for. It ships with the Vulkan SDK.
+	static const char *const LayerName = "VK_LAYER_KHRONOS_validation";
+
+	// Is that layer actually installed? Requesting a missing layer makes
+	// vkCreateInstance fail with VK_ERROR_LAYER_NOT_PRESENT, so check first.
+	static inline bool IsSupported()
+	{
+		uint32_t count = 0;
+		vkEnumerateInstanceLayerProperties(&count, nullptr);
+
+		VkLayerProperties *pAvailable = new VkLayerProperties[count];
+		vkEnumerateInstanceLayerProperties(&count, pAvailable);
+
+		bool found = false;
+		for (uint32_t i = 0; i < count; i++)
+		{
+			if (strcmp(pAvailable[i].layerName, LayerName) == 0)
+			{
+				found = true;
+				break;
+			}
+		}
+
+		delete[] pAvailable;
+		return found;
+	}
+
+	// Where every validation message lands -- all through Keenan's Debug::out so
+	// each line is thread-tagged.
+	//
+	// Debug::out formats into a fixed buffer capped at 256 chars internally and
+	// ASSERTS ("Buffer too small") on overflow. Validation strings are often
+	// longer, so we memcpy the message into a bounded buffer and print it in
+	// CHUNKS -- every chunk stays under the cap, and nothing is lost.
+	static inline VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+		VkDebugUtilsMessageTypeFlagsEXT type,
+		const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+		void *pUserData)
+	{
+		AZUL_UNUSED_VAR(type);
+		AZUL_UNUSED_VAR(pUserData);
+
+		const char *pSeverity =
+			(severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)   ? "ERROR" :
+			(severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) ? "WARN"  :
+																		   "INFO";
+
+		Debug::out("[Vulkan %s]\n", pSeverity);
+
+		const char *pMessage = pCallbackData->pMessage ? pCallbackData->pMessage : "(null)";
+
+		// 180 leaves headroom under the 256 cap for the tabs + "(ThreadName): "
+		// prefix Debug::out prepends.
+		const size_t chunkMax = 180;
+		char         chunk[chunkMax + 1];
+
+		size_t total  = strlen(pMessage);
+		size_t offset = 0;
+		do
+		{
+			size_t n = total - offset;
+			if (n > chunkMax)
+			{
+				n = chunkMax;
+			}
+
+			memcpy(chunk, pMessage + offset, n);
+			chunk[n] = '\0';
+
+			Debug::out("%s\n", chunk);		// chunk is the %s arg -> any '%' in it is safe
+			offset += n;
+		} while (offset < total);
+
+		// VK_FALSE: do not abort the Vulkan call that triggered the message.
+		return VK_FALSE;
+	}
+
+	// Messenger settings (warnings + errors -- info/verbose are noisy). Shared
+	// by the instance-create pNext chain and the standalone messenger.
+	static inline void FillMessengerInfo(VkDebugUtilsMessengerCreateInfoEXT &info)
+	{
+		info = {};
+		info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		info.messageSeverity =
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		info.messageType =
+			VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		info.pfnUserCallback = DebugCallback;
+	}
+
+	// vkCreate/DestroyDebugUtilsMessengerEXT are EXTENSION entry points -- the
+	// static loader library does not export them, so their addresses must be
+	// fetched at runtime with vkGetInstanceProcAddr. (This hand-loading is
+	// exactly the boilerplate a meta-loader like volk would do automatically.)
+	static inline VkDebugUtilsMessengerEXT CreateMessenger(VkInstance instance)
+	{
+		PFN_vkCreateDebugUtilsMessengerEXT pCreate =
+			(PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+				instance, "vkCreateDebugUtilsMessengerEXT");
+
+		if (pCreate == nullptr)
+		{
+			Debug::out("Validation: vkCreateDebugUtilsMessengerEXT unavailable\n");
+			return VK_NULL_HANDLE;
+		}
+
+		VkDebugUtilsMessengerCreateInfoEXT info;
+		FillMessengerInfo(info);
+
+		VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+		VK_Try(pCreate(instance, &info, nullptr, &messenger));
+		return messenger;
+	}
+
+	static inline void DestroyMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messenger)
+	{
+		if (messenger == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
+		PFN_vkDestroyDebugUtilsMessengerEXT pDestroy =
+			(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+				instance, "vkDestroyDebugUtilsMessengerEXT");
+
+		if (pDestroy != nullptr)
+		{
+			pDestroy(instance, messenger, nullptr);
+		}
+	}
+}
+
+// --------------------------------------------------------------------------
+// The tracking callbacks handed to VMA. Free functions, because Vulkan and VMA
+// want plain C function pointers with their own calling convention.
+//
+//   HOST (CPU) -- ordinary CRT memory, so allocate it tracked + aligned. The
+//     __FILE__/__LINE__ tag every host block to this file; that is a generic
+//     call site, but enough to flag a leak.
+//   DEVICE (GPU) -- VkDeviceMemory is not CRT memory, so shadow-track it. VMA
+//     fires these only per big VkDeviceMemory BLOCK (a handful of times), not
+//     per sub-allocation -- so, unlike the CUDA per-thread device path, it is
+//     cheap enough to leave on unconditionally.
+//
+// `inline` (not `static`) so all TUs share one address for each.
+// --------------------------------------------------------------------------
+namespace Neelam::vk::MemTrack
+{
+#ifdef _DEBUG
+	inline void* VKAPI_PTR HostAlloc(void*, size_t size, size_t alignment, VkSystemAllocationScope)
+	{
+		return MemTrace::VkHostAlloc(size, alignment, __FILE__, __LINE__);
+	}
+	inline void* VKAPI_PTR HostRealloc(void*, void* pOriginal, size_t size, size_t alignment, VkSystemAllocationScope)
+	{
+		return MemTrace::VkHostRealloc(pOriginal, size, alignment, __FILE__, __LINE__);
+	}
+	inline void VKAPI_PTR HostFree(void*, void* pMemory)
+	{
+		MemTrace::VkHostFree(pMemory);
+	}
+
+	inline void VKAPI_PTR DeviceAlloc(VmaAllocator, uint32_t, VkDeviceMemory memory, VkDeviceSize size, void*)
+	{
+		MemTrace::VkMemInsert((void*)memory, (size_t)size, __FILE__, __LINE__, "VMA-device");
+	}
+	inline void VKAPI_PTR DeviceFree(VmaAllocator, uint32_t, VkDeviceMemory memory, VkDeviceSize, void*)
+	{
+		MemTrace::VkMemRemove((void*)memory);
+	}
+#endif
+}
+
+// --------------------------------------------------------------------------
+// class VulkanAllocator   (singleton)
+//
+// Wraps VMA's VmaAllocator. Vulkan makes you manage GPU memory by hand (query
+// memory types, sub-allocate, align, pool); VMA does all of that, so a buffer
+// or image becomes one call.
+//
+// Built from the instance + physical device + logical device, and it takes its
+// Vulkan entry points straight from volk (vmaImportVulkanFunctionsFromVolk), so
+// Create() must run AFTER the logical device exists (volkLoadDevice has run by
+// then) and Destroy() BEFORE the device is destroyed.
+//
+// Tracking is not optional here and has no #if around it: in a Debug build the
+// callbacks above are always installed. That is the point of the allocator
+// living in the framework.
+// --------------------------------------------------------------------------
+namespace Neelam::vk
+{
+	class VulkanAllocator
+	{
+	public:
+		VulkanAllocator(const VulkanAllocator &) = delete;
+		VulkanAllocator &operator = (const VulkanAllocator &) = delete;
+
+		// Build the allocator. Needs all three: instance, the chosen GPU, and
+		// the logical device it allocates from.
+		static void Create(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device)
+		{
+			VulkanAllocator &rThis = VulkanAllocator::privGetRefInstance();
+			assert(rThis.privAllocator == VK_NULL_HANDLE);
+
+			// VMA needs Vulkan function pointers. Because we use volk, hand it
+			// volk's already-loaded pointers rather than letting VMA load its
+			// own -- one source of truth.
+			VmaVulkanFunctions functions = {};
+
+			VmaAllocatorCreateInfo createInfo = {};
+			// BUFFER_DEVICE_ADDRESS lets VMA hand out GPU addresses for buffers.
+			// It requires the device to have bufferDeviceAddress enabled --
+			// which LogicalDevice does (see the feature chain there).
+			createInfo.flags            = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+			createInfo.physicalDevice   = physicalDevice;
+			createInfo.device           = device;
+			createInfo.pVulkanFunctions = &functions;
+			createInfo.instance         = instance;
+			createInfo.vulkanApiVersion = VK_API_VERSION_1_4;
+
+			VK_Try(vmaImportVulkanFunctionsFromVolk(&createInfo, &functions));
+
+#ifdef _DEBUG
+			// Route VMA's host + device allocations through the tracker.
+			// static: VMA keeps these pointers, so they must outlive this call.
+			static VkAllocationCallbacks hostCallbacks = {};
+			hostCallbacks.pfnAllocation   = Neelam::vk::MemTrack::HostAlloc;
+			hostCallbacks.pfnReallocation = Neelam::vk::MemTrack::HostRealloc;
+			hostCallbacks.pfnFree         = Neelam::vk::MemTrack::HostFree;
+
+			static VmaDeviceMemoryCallbacks deviceCallbacks = {};
+			deviceCallbacks.pfnAllocate = Neelam::vk::MemTrack::DeviceAlloc;
+			deviceCallbacks.pfnFree     = Neelam::vk::MemTrack::DeviceFree;
+
+			createInfo.pAllocationCallbacks   = &hostCallbacks;
+			createInfo.pDeviceMemoryCallbacks = &deviceCallbacks;
+#endif
+
+			VK_Try(vmaCreateAllocator(&createInfo, &rThis.privAllocator));
+
+			Debug::out("VulkanAllocator: VMA allocator created (tracked)\n");
+		}
+
+		// vmaDestroyAllocator. Owned, so this really releases. Idempotent.
+		static void Destroy()
+		{
+			VulkanAllocator &rThis = VulkanAllocator::privGetRefInstance();
+
+			if (rThis.privAllocator != VK_NULL_HANDLE)
+			{
+				vmaDestroyAllocator(rThis.privAllocator);
+				rThis.privAllocator = VK_NULL_HANDLE;
+			}
+		}
+
+		// The handle, for vmaCreateImage / vmaCreateBuffer callers.
+		static VmaAllocator Get()
+		{
+			VulkanAllocator &rThis = VulkanAllocator::privGetRefInstance();
+			assert(rThis.privAllocator != VK_NULL_HANDLE);
+			return rThis.privAllocator;
+		}
+
+		//---------------------------------------------------------------
+		// LeakTest -- deliberately leaks ONE dedicated VMA allocation so the
+		// tracker has something to report. Expect, at process end:
+		//
+		//     VkLeak(0)  <n> bytes  VMA-device  Framework.h(<line>)
+		//     Leak(0..n) ...                    Framework.h(<line>)
+		//     >>> Memory Tracking: FAIL <<<
+		//
+		// plus a vkDestroyDevice validation line naming the undestroyed
+		// VkBuffer + VkDeviceMemory -- independent confirmation.
+		//
+		// Lives here so testing the tracker never means editing engine code.
+		// Nothing in the engine calls it -- delete the CALL SITE, not this.
+		//
+		// DEDICATED_MEMORY forces its own VkDeviceMemory block, which is what makes
+		// the device-alloc callback fire.
+		//---------------------------------------------------------------
+		static void LeakTest(VkDeviceSize bytes = 4 * 1024 * 1024)
+		{
+			VkBufferCreateInfo bufferInfo = {};
+			bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			bufferInfo.size        = bytes;
+			bufferInfo.usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+			VmaAllocationCreateInfo allocInfo = {};
+			allocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+			allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+			VkBuffer      buffer     = VK_NULL_HANDLE;
+			VmaAllocation allocation = VK_NULL_HANDLE;
+
+			VK_Try(vmaCreateBuffer(VulkanAllocator::Get(), &bufferInfo, &allocInfo,
+				&buffer, &allocation, nullptr));
+
+			// ... and never destroy it. That is the entire test.
+			Debug::out("VulkanAllocator: LEAK TEST -- leaked %u bytes on purpose\n",
+				(unsigned int)bytes);
+		}
+
+	private:
+		VulkanAllocator()
+			: privAllocator(VK_NULL_HANDLE)
+		{
+		}
+		~VulkanAllocator() = default;
+
+		// Same Meyers-singleton shape MemTrace uses (privGetRefInstance).
+		static VulkanAllocator &privGetRefInstance()
+		{
+			static VulkanAllocator instance;
+			return instance;
+		}
+
+		VmaAllocator privAllocator;
+	};
+}
+
+#endif   // VULKAN_FRAMEWORK_H
+
+#endif   // USE_VULKAN_FRAMEWORK
+
+// The BODIES of volk + VMA are NOT here. They are ordinary non-inline functions
+// and globals, so they may exist exactly once in the program -- and this header
+// is force-included into all 23 app TUs. They live in Framework/VulkanImpl.cpp,
+// which the app project compiles on its own; see the note at the top of that
+// file. Everything above is declarations only.
 
 // ---  End of File ---
