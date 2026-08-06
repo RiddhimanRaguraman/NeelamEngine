@@ -90,6 +90,14 @@ namespace NeelamEditor.GameProject
             undoredo.Reset();
         }
 
+        // A project's own C++ sources live in <project>\GameCode -- Game.h / Game.cpp,
+        // written once by NewProject.CopyTemplateGameCode when the project is created.
+        //
+        // They are project content, not solution content: premake builds Neelam.sln
+        // (editor + engine + libs) and knows nothing about projects the editor
+        // creates at runtime. Compiling a project's game code is a separate concern
+        // that will need its own build step.
+
         // Persist a project to its own FullPath.
         public static void Save(Project project)
         {
