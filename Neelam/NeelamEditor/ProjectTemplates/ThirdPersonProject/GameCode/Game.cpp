@@ -1,19 +1,15 @@
 //-----------------------------------------------------------------
 // Your game.
 //
-// The concrete half of the engine's Engine/Game pair, copied here when this
-// project was created. LoadContent / UnloadContent / Update / Render are the
-// four hooks Engine calls; everything a game owns -- techniques, cameras,
-// geometry -- lives behind them. Out of the box this draws one triangle.
+// This is a copy of the engine's default Game -- the one that draws the
+// triangle you see in the editor viewport. It is yours to edit: LoadContent /
+// UnloadContent / Update / Render are the four hooks the Engine calls, and
+// everything the game owns (techniques, cameras, geometry) lives behind them.
 //
-// NOT COMPILED YET. premake builds Neelam.sln -- the editor, the engine and the
-// libs -- and knows nothing about projects the editor creates at runtime. What
-// the viewport actually runs is the copy of this class inside NeelamEngine.dll,
-// built from NeelamEngine\Game. Compiling per-project game code needs its own
-// build step, which does not exist yet.
-//
-// So this is a starting point and a reference: the real shape of a game, ready
-// for the day the project itself gets built.
+// HOW IT RUNS TODAY: the viewport is driven by the copy of this class compiled
+// into NeelamEngine.dll, so edits here do not show up yet -- per-project game
+// code is not compiled into the engine build. The file is here so a project has
+// a real starting point, and so the shape of a game is obvious from day one.
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
