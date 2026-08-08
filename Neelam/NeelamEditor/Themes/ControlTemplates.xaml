@@ -1,7 +1,8 @@
 <ResourceDictionary x:Class="NeelamEditor.Themes.ControlTemplates"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:local="clr-namespace:NeelamEditor.Themes">
+                    xmlns:local="clr-namespace:NeelamEditor.Themes"
+                    xmlns:utl="clr-namespace:NeelamEditor.Utilities.Controls">
 
     <!-- ============================================================
          Implicit TextBox style. Inherits all the visual setters from
@@ -21,6 +22,325 @@
              updated by the time we look at it, and the command's CanExecute
              returns false (oldName == newName), so no undo entry is created. -->
         <EventSetter Event="LostKeyboardFocus"  Handler="OnTextBox_LostKeyboardFocus"/>
+    </Style>
+
+    <!-- ============================================================
+         Centralized window chrome. Apply with
+             Style="{StaticResource NeelamWindowStyle}"   (main: min/max/close)
+             Style="{StaticResource NeelamDialogStyle}"   (dialog: close only)
+         The whole title bar lives in the template, so every window that
+         opts in gets identical chrome with no per-window markup. Caption
+         buttons route to the handlers in ControlTemplates.xaml.cs via
+         TemplatedParent, so there's ONE copy of that logic.
+
+         Glyphs are vector Path/Rectangle (crisp at any DPI, and the stroke
+         binds to the button Foreground so Close turns white on its Danger
+         hover). This dictionary is merged AFTER DarkTheme, so the caption
+         button styles (TitleBar/Close) resolve.
+         ============================================================ -->
+
+    <!-- Shared caption-button glyph stroke: follows the owning button's
+         Foreground (drives the Close-button hover tint). -->
+    <Style x:Key="CaptionGlyphStyle" TargetType="{x:Type Shape}">
+        <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        <Setter Property="StrokeThickness" Value="1"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <Style x:Key="NeelamWindowStyle" TargetType="{x:Type Window}">
+        <Setter Property="Background"  Value="{StaticResource BaseBrush}"/>
+        <Setter Property="Foreground"  Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="WindowChrome.WindowChrome">
+            <Setter.Value>
+                <WindowChrome CaptionHeight="32" ResizeBorderThickness="6"
+                              GlassFrameThickness="0" CornerRadius="0"
+                              NonClientFrameEdges="None" UseAeroCaptionButtons="False"/>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Window}">
+                    <!-- Outer border. When maximized, thicken it to the OS resize
+                         border so the client insets by that much and content isn't
+                         clipped off-screen (the fat accent ring sits in the overflow
+                         region, invisible). Same trick Primal uses. -->
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="Maximized">
+                                        <Setter Property="BorderThickness" Value="{Binding Source={x:Static SystemParameters.WindowResizeBorderThickness}}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Caption strip -->
+                            <Border Grid.Row="0" Background="{StaticResource BaseBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="{TemplateBinding Title}"
+                                               Foreground="{StaticResource TextBrightBrush}"
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Width="46" Height="32"
+                                                Style="{StaticResource TitleBarButtonStyle}"
+                                                WindowChrome.IsHitTestVisibleInChrome="True"
+                                                Click="OnMinimize_Button_Click">
+                                            <Path Data="M0,0 H10" Style="{StaticResource CaptionGlyphStyle}"/>
+                                        </Button>
+                                        <Button Width="46" Height="32"
+                                                Style="{StaticResource TitleBarButtonStyle}"
+                                                WindowChrome.IsHitTestVisibleInChrome="True"
+                                                Click="OnMaximizeRestore_Button_Click">
+                                            <Rectangle Width="10" Height="9" Style="{StaticResource CaptionGlyphStyle}"/>
+                                        </Button>
+                                        <Button Width="46" Height="32"
+                                                Style="{StaticResource CloseButtonStyle}"
+                                                WindowChrome.IsHitTestVisibleInChrome="True"
+                                                Click="OnClose_Button_Click">
+                                            <Grid Width="10" Height="10">
+                                                <Path Data="M0,0 L9,9" Style="{StaticResource CaptionGlyphStyle}"/>
+                                                <Path Data="M0,9 L9,0" Style="{StaticResource CaptionGlyphStyle}"/>
+                                            </Grid>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Window content -->
+                            <ContentPresenter Grid.Row="1"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Dialog variant: no resize, close button only. -->
+    <Style x:Key="NeelamDialogStyle" TargetType="{x:Type Window}">
+        <Setter Property="Background"  Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="Foreground"  Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="WindowChrome.WindowChrome">
+            <Setter.Value>
+                <WindowChrome CaptionHeight="32" ResizeBorderThickness="0"
+                              GlassFrameThickness="0" CornerRadius="0"
+                              NonClientFrameEdges="None" UseAeroCaptionButtons="False"/>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Window}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Background="{StaticResource BaseBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="{TemplateBinding Title}"
+                                               Foreground="{StaticResource TextBrightBrush}"
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                                    <Button Grid.Column="1" Width="46" Height="32"
+                                            Style="{StaticResource CloseButtonStyle}"
+                                            WindowChrome.IsHitTestVisibleInChrome="True"
+                                            Click="OnClose_Button_Click">
+                                        <Grid Width="10" Height="10">
+                                            <Path Data="M0,0 L9,9" Style="{StaticResource CaptionGlyphStyle}"/>
+                                            <Path Data="M0,9 L9,0" Style="{StaticResource CaptionGlyphStyle}"/>
+                                        </Grid>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <ContentPresenter Grid.Row="1"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============================================================
+         Inspector controls: NumberBox / ScalarBox / VectorBox.
+         Ported from the Primal editor, retinted to our tokens. The
+         drag-to-scrub + click-to-edit logic is in the control classes
+         (Utilities/Controls); these are just their default templates.
+         ============================================================ -->
+
+    <!-- Editable field revealed by clicking a NumberBox. Commits on Enter,
+         reverts on Escape / focus-loss, then hides itself. -->
+    <Style TargetType="{x:Type TextBox}" x:Key="TextBoxStyle_WithRename" BasedOn="{StaticResource TextBoxStyle}">
+        <EventSetter Event="KeyDown"   Handler="OnTextBoxRename_KeyDown"/>
+        <EventSetter Event="LostFocus" Handler="OnTextBoxRename_LostFocus"/>
+    </Style>
+
+    <Style TargetType="{x:Type utl:NumberBox}" x:Key="{x:Type utl:NumberBox}">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type utl:NumberBox}">
+                    <Grid>
+                        <TextBlock x:Name="PART_textBlock" HorizontalAlignment="Center"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}}">
+                            <TextBlock.Style>
+                                <Style TargetType="{x:Type TextBlock}">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Cursor" Value="SizeWE"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox x:Name="PART_textBox" BorderThickness="0" Padding="0"
+                                 Visibility="Collapsed" HorizontalAlignment="Center"
+                                 HorizontalContentAlignment="Center"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 Style="{StaticResource TextBoxStyle_WithRename}"
+                                 Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, UpdateSourceTrigger=Explicit}"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Visibility, ElementName=PART_textBox}" Value="Visible">
+                            <Setter TargetName="PART_textBlock" Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                        <!-- Mixed value (null) → keep a clickable minimum width. -->
+                        <DataTrigger Binding="{Binding Value, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                            <Setter TargetName="PART_textBlock" Property="MinWidth" Value="20"/>
+                            <Setter TargetName="PART_textBlock" Property="ToolTip" Value="Mixed Values"/>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Standalone pill-shaped single number field. -->
+    <Style TargetType="{x:Type utl:ScalarBox}" x:Key="{x:Type utl:ScalarBox}">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Foreground"      Value="{StaticResource TextBrush}"/>
+        <Setter Property="Background"      Value="{StaticResource InputBrush}"/>
+        <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type utl:ScalarBox}">
+                    <Border x:Name="border" SnapsToDevicePixels="True" Margin="0,2,0,3"
+                            Background="{TemplateBinding Background}" Padding="5,2"
+                            BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="10"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <Grid MinWidth="50">
+                            <TextBlock x:Name="PART_textBlock" HorizontalAlignment="Center"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="{x:Type TextBlock}">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Cursor" Value="SizeWE"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBox x:Name="PART_textBox" BorderThickness="0" Padding="0"
+                                     Visibility="Collapsed" HorizontalAlignment="Center"
+                                     HorizontalContentAlignment="Center"
+                                     Foreground="{TemplateBinding Foreground}"
+                                     Style="{StaticResource TextBoxStyle_WithRename}"
+                                     Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, UpdateSourceTrigger=Explicit}"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource GrayBrush6}"/>
+                        </Trigger>
+                        <DataTrigger Binding="{Binding Visibility, ElementName=PART_textBox}" Value="Visible">
+                            <Setter TargetName="PART_textBlock" Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- X/Y/Z(/W) group. Axes are tinted with the Axis* tokens. -->
+    <Style TargetType="{x:Type utl:VectorBox}" x:Key="{x:Type utl:VectorBox}">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Background"      Value="{StaticResource InputBrush}"/>
+        <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type utl:VectorBox}">
+                    <ControlTemplate.Resources>
+                        <Style TargetType="{x:Type utl:NumberBox}" BasedOn="{StaticResource {x:Type utl:NumberBox}}">
+                            <Setter Property="MinWidth" Value="44"/>
+                            <Setter Property="Margin"   Value="4,0"/>
+                            <Setter Property="Multiplier" Value="{Binding Multiplier, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </Style>
+                    </ControlTemplate.Resources>
+                    <Border x:Name="border" SnapsToDevicePixels="True" Margin="0,2,0,3"
+                            Background="{TemplateBinding Background}" Padding="5,2"
+                            BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="10"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <StackPanel x:Name="panel" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <utl:NumberBox x:Name="nbX" Foreground="{StaticResource AxisXBrush}" ToolTip="X"
+                                           Value="{Binding X, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <utl:NumberBox x:Name="nbY" Foreground="{StaticResource AxisYBrush}" ToolTip="Y"
+                                           Value="{Binding Y, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <utl:NumberBox x:Name="nbZ" Foreground="{StaticResource AxisZBrush}" ToolTip="Z"
+                                           Value="{Binding Z, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <utl:NumberBox x:Name="nbW" Foreground="{StaticResource TextBrush}" ToolTip="W" Visibility="Collapsed"
+                                           Value="{Binding W, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding VectorType, RelativeSource={RelativeSource Self}}" Value="Vector2">
+                            <Setter TargetName="nbZ" Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding VectorType, RelativeSource={RelativeSource Self}}" Value="Vector4">
+                            <Setter TargetName="nbW" Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource GrayBrush6}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="panel" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

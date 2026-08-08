@@ -91,7 +91,12 @@ namespace NeelamEditor.Components
         [DataMember(Name = nameof(Components))]
         private ObservableCollection<Component> _components = new ObservableCollection<Component>();
         public ReadOnlyObservableCollection<Component> Components { get; private set; }
-  
+
+        // Component lookup by type. GetComponent<T> underpins the multi-select proxies:
+        // MSComponent<T> pulls the same-typed component from every selected entity.
+        public Component GetComponent(Type type) => Components.FirstOrDefault(c => c.GetType() == type);
+        public T GetComponent<T>() where T : Component => GetComponent(typeof(T)) as T;
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
@@ -149,12 +154,15 @@ namespace NeelamEditor.Components
        
         // Returns the shared value across all entities, or null when they differ
         // (a "mixed" selection), so the UI can show a blank/indeterminate field.
-        public static float? GetMixedValue(List<GameEntity> entities, Func<GameEntity, float> getProperty)
+        // Generic over the list element so it works for both a GameEntity selection
+        // (Name/IsEnabled) and a component selection (MSTransform reads Transform.X…).
+        public static float? GetMixedValue<T>(List<T> list, Func<T, float> getProperty)
         {
-            var value = getProperty(entities.First());
-            foreach (var entity in entities.Skip(1))
+            var value = getProperty(list.First());
+            foreach (var item in list.Skip(1))
             {
-                if (value.IsTheSameAs(getProperty(entity)))
+                // Mixed → blank. (Float compares via IsTheSameAs to tolerate FP noise.)
+                if (!value.IsTheSameAs(getProperty(item)))
                 {
                     return null;
                 }
@@ -162,12 +170,12 @@ namespace NeelamEditor.Components
             return value;
         }
 
-        public static bool? GetMixedValue(List<GameEntity> entities, Func<GameEntity, bool> getProperty)
+        public static bool? GetMixedValue<T>(List<T> list, Func<T, bool> getProperty)
         {
-            var value = getProperty(entities.First());
-            foreach (var entity in entities.Skip(1))
+            var value = getProperty(list.First());
+            foreach (var item in list.Skip(1))
             {
-                if (value != getProperty(entity))
+                if (value != getProperty(item))
                 {
                     return null;
                 }
@@ -175,12 +183,12 @@ namespace NeelamEditor.Components
             return value;
         }
 
-        public static string GetMixedValue(List<GameEntity> entities, Func<GameEntity, string> getProperty)
+        public static string GetMixedValue<T>(List<T> list, Func<T, string> getProperty)
         {
-            var value = getProperty(entities.First());
-            foreach (var entity in entities.Skip(1))
+            var value = getProperty(list.First());
+            foreach (var item in list.Skip(1))
             {
-                if (value != getProperty(entity))
+                if (value != getProperty(item))
                 {
                     return null;
                 }
@@ -210,8 +218,32 @@ namespace NeelamEditor.Components
         {
             _enableEntities = false;
             UpdateMSGameEntity();
+            MakeComponentList();
             _enableEntities = true;
         }
+
+        // One MS proxy per component type shared by ALL selected entities. A component
+        // present on only some of the selection isn't editable as a group, so it's
+        // skipped. The proxies (e.g. MSTransform) are what the inspector binds to.
+        private void MakeComponentList()
+        {
+            _components.Clear();
+            var firstEntity = SelectedEntities.FirstOrDefault();
+            if (firstEntity == null) return;
+
+            foreach (var component in firstEntity.Components)
+            {
+                var type = component.GetType();
+                if (!SelectedEntities.Skip(1).Any(entity => entity.GetComponent(type) == null))
+                {
+                    _components.Add(component.GetMultiselectionComponent(this));
+                }
+            }
+        }
+
+        // The MS proxy of a given type, for the inspector's undo/redo refresh path.
+        public T GetMSComponent<T>() where T : IMSComponent
+            => (T)Components.FirstOrDefault(x => x.GetType() == typeof(T));
 
 
 

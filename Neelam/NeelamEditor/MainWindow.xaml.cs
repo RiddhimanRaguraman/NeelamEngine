@@ -50,15 +50,7 @@ namespace NeelamEditor
             }
         }
 
-        // Custom-titlebar button handlers (we removed the OS chrome via WindowStyle="None").
-        private void OnMinimize_Click(object sender, RoutedEventArgs e)
-            => WindowState = WindowState.Minimized;
-
-        private void OnMaximize_Click(object sender, RoutedEventArgs e)
-            => WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
-
-        private void OnClose_Click(object sender, RoutedEventArgs e) => Close();
+        // Caption-button handlers now live in Themes/ControlTemplates.xaml.cs,
+        // shared by every window that uses NeelamWindowStyle / NeelamDialogStyle.
     }
 }

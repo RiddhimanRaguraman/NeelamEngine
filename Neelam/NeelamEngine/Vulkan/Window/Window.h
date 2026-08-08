@@ -67,6 +67,14 @@ namespace Neelam::vk
 		HWND GetHandle() const;
 		HINSTANCE GetModule() const;
 
+		// True while the viewport's child window holds keyboard focus. Camera
+		// input is gated on this: Tic() runs on the host's shared UI thread, so
+		// GetKeyState reflects the whole window's input queue and can't tell the
+		// viewport from the editor tree on its own. Clicking the viewport focuses
+		// it (see privHandleMessage), flipping this on. Static because there is
+		// exactly one viewport window.
+		static bool HasFocus();
+
 	private:
 		// Static thunk: recovers the Window* stashed at creation and forwards
 		// to privHandleMessage. See Window.cpp for the this-pointer routing.
@@ -89,6 +97,7 @@ namespace Neelam::vk
 		HINSTANCE privModule;
 		bool      privClassRegistered;
 		bool      privIsChild;			// embedded: do not PostQuitMessage
+		static bool privHasFocus;		// viewport holds keyboard focus
 	};
 }
 

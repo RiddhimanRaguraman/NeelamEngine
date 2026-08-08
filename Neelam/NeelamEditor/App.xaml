@@ -6,8 +6,11 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- Order matters: ControlTemplates references TextBoxStyle from
-                     DarkTheme, so DarkTheme must merge first. -->
+                <!-- Order matters. EditorColors holds the color/brush/font tokens
+                     that everything else resolves against, so it merges FIRST.
+                     DarkTheme (visual styles) references those tokens; then
+                     ControlTemplates references TextBoxStyle from DarkTheme. -->
+                <ResourceDictionary Source="Themes/EditorColors.xaml"/>
                 <ResourceDictionary Source="Themes/DarkTheme.xaml"/>
                 <ResourceDictionary Source="Themes/ControlTemplates.xaml"/>
             </ResourceDictionary.MergedDictionaries>

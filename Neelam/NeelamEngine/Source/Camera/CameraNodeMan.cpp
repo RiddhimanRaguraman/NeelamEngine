@@ -5,6 +5,7 @@
 #include "CameraNodeMan.h"
 #include "CameraNull.h"
 #include "Camera.h"
+#include "Window.h"
 #include "ManBase.h"
 #include "DLinkMan.h"
 #include "CameraNodeCompareStrategyEnumName.h"
@@ -236,6 +237,15 @@ namespace Neelam
 
     void CameraNodeMan::ProcessInput()
     {
+        // Only steer the camera when the viewport actually holds input focus.
+        // Tic() runs on the host's UI thread, so the GetKeyState calls below read
+        // the whole window's shared input queue -- without this gate, a Ctrl+Z in
+        // the editor's scene tree would reach the camera and move the object.
+        // Clicking the viewport focuses its child HWND (Window::privHandleMessage),
+        // which is what flips HasFocus() on.
+        if (!Neelam::vk::Window::HasFocus())
+            return;
+
         // grab the one active camera
         // Assuming we control the perspective camera with inputs
         Camera* pCam = this->pCamPerspective;

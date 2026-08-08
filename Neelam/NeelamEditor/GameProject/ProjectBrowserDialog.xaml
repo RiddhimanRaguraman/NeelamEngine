@@ -6,49 +6,57 @@
         xmlns:local="clr-namespace:NeelamEditor.GameProject"
         mc:Ignorable="d" ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         Title="Project Browser" Height="600" Width="800"
-        WindowStyle="None" AllowsTransparency="False"
-        Background="{StaticResource SurfaceBrush}">
-    <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="32"
-                      ResizeBorderThickness="0"
-                      GlassFrameThickness="0"
-                      CornerRadius="0"
-                      UseAeroCaptionButtons="False"/>
-    </WindowChrome.WindowChrome>
+        Style="{StaticResource NeelamDialogStyle}">
+    <!-- Chrome (title bar + close) comes from NeelamDialogStyle. -->
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="32" />
             <RowDefinition Height="auto" />
             <RowDefinition />
         </Grid.RowDefinitions>
 
-        <!-- Custom title bar -->
-        <Border Grid.Row="0" Background="{StaticResource BaseBrush}">
-            <Grid>
-                <TextBlock Text="Project Browser"
-                           Foreground="{StaticResource TextBrightBrush}"
-                           VerticalAlignment="Center"
-                           Margin="10,0,0,0"/>
-                <Button Content="X"
-                        HorizontalAlignment="Right"
-                        Width="46" Height="32"
-                        Style="{StaticResource CloseButtonStyle}"
-                        WindowChrome.IsHitTestVisibleInChrome="True"
-                        Click="OnCloseButton_Click"/>
-            </Grid>
-        </Border>
+        <!-- Tab strip. A soft accent glow (highlightRect) sits behind the tabs
+             and is slid under the active one in code-behind; the tabs' own
+             accent underline (TabToggleButtonStyle) still marks selection. -->
+        <Grid Grid.Row="0" ClipToBounds="True">
+            <Canvas x:Name="tabGlowCanvas">
+                <Rectangle x:Name="highlightRect" Canvas.Left="0" Opacity="0.35"
+                           Height="{Binding ActualHeight, ElementName=tabGlowCanvas}">
+                    <Rectangle.Effect>
+                        <BlurEffect Radius="12" KernelType="Gaussian"/>
+                    </Rectangle.Effect>
+                    <!-- Accent light emanating from the bottom edge (theme's one hue). -->
+                    <Rectangle.Fill>
+                        <RadialGradientBrush GradientOrigin="0.5,1" Center="0.5,1" RadiusY="2">
+                            <GradientStop Color="{StaticResource AccentColor}" Offset="0"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Rectangle.Fill>
+                    <Rectangle.OpacityMask>
+                        <RadialGradientBrush GradientOrigin="0.5,1" Center="0.5,1" RadiusY="0.5">
+                            <GradientStop Color="White" Offset="0"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Rectangle.OpacityMask>
+                </Rectangle>
+            </Canvas>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
-            <ToggleButton Content="Open Project" x:Name="openProjectButton" FontSize="32"
-                          Style="{StaticResource TabToggleButtonStyle}"
-                          Click="OnToggleButton_Click" IsChecked="True"/>
-            <ToggleButton Content="Create Project" x:Name="createProjectButton" FontSize="32" Margin="30,0,0,0"
-                          Style="{StaticResource TabToggleButtonStyle}"
-                          Click="OnToggleButton_Click" IsChecked="False"/>
-        </StackPanel>
-        <Grid Grid.Row="2" ClipToBounds="True">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
+                <ToggleButton Content="Open Project" x:Name="openProjectButton" FontSize="32"
+                              FontFamily="{StaticResource DisplayFontFamily}"
+                              Style="{StaticResource TabToggleButtonStyle}"
+                              Click="OnToggleButton_Click" IsChecked="True"/>
+                <ToggleButton Content="Create Project" x:Name="createProjectButton" FontSize="32" Margin="30,0,0,0"
+                              FontFamily="{StaticResource DisplayFontFamily}"
+                              Style="{StaticResource TabToggleButtonStyle}"
+                              Click="OnToggleButton_Click" IsChecked="False"/>
+            </StackPanel>
+        </Grid>
+        <Grid Grid.Row="1" ClipToBounds="True">
             <StackPanel Orientation="Horizontal" x:Name="browsercontent"
                         HorizontalAlignment="Left">
+                <StackPanel.Effect>
+                    <DropShadowEffect Opacity="0.5" BlurRadius="14" ShadowDepth="2"/>
+                </StackPanel.Effect>
                 <local:OpenProjectView x:Name="openProjectView"/>
                 <local:NewProjectView x:Name="newProjectView"/>
             </StackPanel>

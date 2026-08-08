@@ -240,6 +240,14 @@ namespace Neelam::vk
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 
+	// One viewport window, so a single static tracks its focus state.
+	bool Window::privHasFocus = false;
+
+	bool Window::HasFocus()
+	{
+		return Window::privHasFocus;
+	}
+
 	LRESULT Window::privHandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		switch (msg)
@@ -285,6 +293,27 @@ namespace Neelam::vk
 				PostQuitMessage(0);
 			}
 			return 0;
+
+		case WM_LBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+		case WM_MBUTTONDOWN:
+			// A WS_CHILD window does not take keyboard focus on click by default.
+			// Do it explicitly so clicking the viewport makes it the input context
+			// (and HwndHost relays the focus move to WPF). Standalone windows get
+			// focus from normal activation, so only the child needs this.
+			if (this->privIsChild)
+			{
+				SetFocus(hwnd);
+			}
+			break;
+
+		case WM_SETFOCUS:
+			Window::privHasFocus = true;
+			break;
+
+		case WM_KILLFOCUS:
+			Window::privHasFocus = false;
+			break;
 
 		default:
 			break;

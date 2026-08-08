@@ -56,5 +56,66 @@ namespace NeelamEditor.Themes
             if (exp == null) return;
             Commit(textBox, exp);
         }
+
+        // --- Caption buttons for NeelamWindowStyle / NeelamDialogStyle -------------
+        // The buttons live inside the Window ControlTemplate, so a button's
+        // TemplatedParent is the templated Window itself. One handler set serves
+        // every window that uses the shared chrome; no per-window code-behind.
+        private static Window HostWindow(object sender)
+            => (Window)((FrameworkElement)sender).TemplatedParent;
+
+        private void OnMinimize_Button_Click(object sender, RoutedEventArgs e)
+            => HostWindow(sender).WindowState = WindowState.Minimized;
+
+        private void OnMaximizeRestore_Button_Click(object sender, RoutedEventArgs e)
+        {
+            var w = HostWindow(sender);
+            w.WindowState = w.WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
+        }
+
+        private void OnClose_Button_Click(object sender, RoutedEventArgs e)
+            => HostWindow(sender).Close();
+
+        // --- NumberBox / ScalarBox inline editor (TextBoxStyle_WithRename) ---------
+        // Enter commits (Tag.ICommand if present, else push the binding) and hides the
+        // box; Escape/focus-loss reverts and hides. UpdateSourceTrigger is Explicit,
+        // so nothing lands until we say so here.
+        private void OnTextBoxRename_KeyDown(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            var exp = textBox.GetBindingExpression(TextBox.TextProperty);
+            if (exp == null) return;
+
+            if (e.Key == Key.Enter)
+            {
+                if (textBox.Tag is ICommand command && command.CanExecute(textBox.Text))
+                    command.Execute(textBox.Text);
+                else
+                    exp.UpdateSource();
+
+                textBox.Visibility = Visibility.Collapsed;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                exp.UpdateTarget();
+                textBox.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnTextBoxRename_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (!textBox.IsVisible) return;
+            var exp = textBox.GetBindingExpression(TextBox.TextProperty);
+            if (exp != null)
+            {
+                // Click-away cancels the typed edit (drag-scrub is the primary path).
+                exp.UpdateTarget();
+                textBox.Visibility = Visibility.Collapsed;
+            }
+        }
     }
 }
