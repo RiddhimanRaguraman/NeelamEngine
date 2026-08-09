@@ -76,31 +76,60 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\VulkanSDK\${{ env.VULKAN_SDK_VERSION }}
-          key: vulkan-sdk-${{ env.VULKAN_SDK_VERSION }}
+          # -volk-vma suffix invalidates any earlier cache that installed without the
+          # volk/VMA components (which caused a C1083 on Volk/volk.h).
+          key: vulkan-sdk-${{ env.VULKAN_SDK_VERSION }}-volk-vma
 
       - name: Install Vulkan SDK
         shell: pwsh
         run: |
           $ver = $env:VULKAN_SDK_VERSION
           $dir = "C:\VulkanSDK\$ver"
-          if (-not (Test-Path "$dir\Include\vulkan\vulkan.h")) {
+
+          # Probe for VOLK specifically, not just vulkan.h. volk (and VMA) are OPTIONAL
+          # SDK components that a silent --default-answer install omits -- the engine's
+          # #include "Volk/volk.h" then fails with C1083. Keying the "already installed?"
+          # check on volk.h means a cached SDK that lacks it gets re-installed, not skipped.
+          if (-not (Test-Path "$dir\Include\Volk\volk.h")) {
             # LunarG's warehouse serves the installer under the generic filename
-            # vulkan_sdk.exe (NOT VulkanSDK-<ver>-Installer.exe, which 404s here).
+            # vulkan_sdk.exe (NOT VulkanSDK-<ver>-Installer.exe, which 404s).
             $url = "https://sdk.lunarg.com/sdk/download/$ver/windows/vulkan_sdk.exe"
             $exe = "$env:RUNNER_TEMP\vulkan-sdk.exe"
             Write-Host "Downloading Vulkan SDK $ver ..."
             Invoke-WebRequest -Uri $url -OutFile $exe
-            Write-Host "Installing (silent) ..."
-            $p = Start-Process -FilePath $exe -ArgumentList "--accept-licenses","--default-answer","--confirm-command","install" -Wait -PassThru
+            Write-Host "Installing (silent) with volk + VMA components ..."
+            # Core (headers, loader, glslang, DXC) is force-installed; volk and VMA must
+            # be named explicitly or they're skipped.
+            $instArgs = @(
+              "--accept-licenses", "--default-answer", "--confirm-command", "install",
+              "com.lunarg.vulkan.volk", "com.lunarg.vulkan.vma"
+            )
+            $p = Start-Process -FilePath $exe -ArgumentList $instArgs -Wait -PassThru
             if ($p.ExitCode -ne 0) { Write-Error "Vulkan SDK install failed (exit $($p.ExitCode))"; exit 1 }
           } else {
-            Write-Host "Vulkan SDK $ver restored from cache."
+            Write-Host "Vulkan SDK $ver (with volk) restored from cache."
           }
-          # dxcompiler.dll is shipped from here later; fail early if the SDK lacks it.
-          if (-not (Test-Path "$dir\Bin\dxcompiler.dll")) {
-            Write-Error "dxcompiler.dll missing from the Vulkan SDK at $dir\Bin"
+
+          # Verify everything the build + release need. Fail loudly with a directory
+          # listing if anything is missing, so a wrong component name is a one-glance
+          # fix instead of a cryptic compile/link error deep in the build.
+          $need = [ordered]@{
+            "volk header"    = "$dir\Include\Volk\volk.h"
+            "dxcompiler.lib" = "$dir\Lib\dxcompiler.lib"
+            "dxcompiler.dll" = "$dir\Bin\dxcompiler.dll"
+          }
+          $missing = $false
+          foreach ($k in $need.Keys) {
+            if (-not (Test-Path $need[$k])) { Write-Host "MISSING: $k -> $($need[$k])"; $missing = $true }
+          }
+          if ($missing) {
+            Write-Host "::group::$dir\Include listing"
+            Get-ChildItem "$dir\Include" -ErrorAction SilentlyContinue | Format-Table Name
+            Write-Host "::endgroup::"
+            Write-Error "Vulkan SDK is missing required pieces (see above)."
             exit 1
           }
+
           "VULKAN_SDK=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append
           Write-Host "VULKAN_SDK=$dir"
 
