@@ -61,6 +61,40 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      # Vulkan SDK. The C++ engine build needs the volk/VMA headers and
+      # dxcompiler.lib from it, and premake reads VULKAN_SDK at GENERATION time, so
+      # this must land BEFORE the premake step. Pinned to the version premake falls
+      # back to; cached because the installer is large (~1-2 GB).
+      - name: Cache Vulkan SDK
+        uses: actions/cache@v4
+        with:
+          path: C:\VulkanSDK\1.4.350.0
+          key: vulkan-sdk-1.4.350.0
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: |
+          $ver = "1.4.350.0"
+          $dir = "C:\VulkanSDK\$ver"
+          if (-not (Test-Path "$dir\Include\vulkan\vulkan.h")) {
+            $url = "https://sdk.lunarg.com/sdk/download/$ver/windows/VulkanSDK-$ver-Installer.exe"
+            $exe = "$env:RUNNER_TEMP\vulkan-sdk.exe"
+            Write-Host "Downloading Vulkan SDK $ver ..."
+            Invoke-WebRequest -Uri $url -OutFile $exe
+            Write-Host "Installing (silent) ..."
+            $p = Start-Process -FilePath $exe -ArgumentList "--accept-licenses","--default-answer","--confirm-command","install" -Wait -PassThru
+            if ($p.ExitCode -ne 0) { Write-Error "Vulkan SDK install failed (exit $($p.ExitCode))"; exit 1 }
+          } else {
+            Write-Host "Vulkan SDK $ver restored from cache."
+          }
+          # dxcompiler.dll is shipped from here later; fail early if the SDK lacks it.
+          if (-not (Test-Path "$dir\Bin\dxcompiler.dll")) {
+            Write-Error "dxcompiler.dll missing from the Vulkan SDK at $dir\Bin"
+            exit 1
+          }
+          "VULKAN_SDK=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "VULKAN_SDK=$dir"
+
       # Step 1: premake generates the .sln.
       - name: Generate solution (premake5 vs2022)
         working-directory: Neelam
@@ -119,6 +153,15 @@ jobs:
           Write-Host "Copied $($dlls.Count) native DLL(s) -> publish/Engine/:"
           $dlls | ForEach-Object { Write-Host "  $($_.Name)" }
 
+          # dxcompiler.dll ships from the Vulkan SDK, not from bin\ -- the engine
+          # compiles HLSL -> SPIR-V at runtime (DXC), so a release without it can't
+          # build any shader. (premake copies it into x64\ at build, but that folder
+          # isn't globbed above; take it straight from the SDK to be certain.)
+          $dxc = Join-Path $env:VULKAN_SDK "Bin/dxcompiler.dll"
+          if (-not (Test-Path $dxc)) { Write-Error "dxcompiler.dll not found at $dxc"; exit 1 }
+          Copy-Item $dxc -Destination $dst
+          Write-Host "  dxcompiler.dll (from Vulkan SDK)"
+
       # Step 5: also copy the ProjectTemplates folder so the editor can find
       # its templates at runtime (the dev-time _templatePath uses ..\..\..\
       # which won't resolve once the editor is installed somewhere else).
@@ -132,6 +175,29 @@ jobs:
             Write-Host "Copied ProjectTemplates -> publish/ProjectTemplates"
           } else {
             Write-Warning "ProjectTemplates folder not found at $src"
+          }
+
+      # Step 5b: copy the runtime HLSL shaders. The engine compiles these to SPIR-V
+      # at runtime, so they must ship. Placed under NeelamEngine\HLSL_Shaders\ to
+      # mirror the path the engine builds: SOLUTION_DIR "NeelamEngine\HLSL_Shaders\".
+      #
+      # CAVEAT: SOLUTION_DIR is baked at COMPILE time to the build machine's solution
+      # path, so a distributed build still won't LOCATE these until the engine resolves
+      # shader paths relative to the exe instead of SOLUTION_DIR (a source change, out
+      # of scope here). Shipping them now, at the correct structure, is the CD half of
+      # that fix -- the day the path goes runtime-relative, they're already in place.
+      - name: Copy HLSL shaders into publish folder
+        shell: pwsh
+        run: |
+          $src = "Neelam/NeelamEngine/HLSL_Shaders"
+          $dst = "${{ github.workspace }}/publish/NeelamEngine/HLSL_Shaders"
+          if (Test-Path $src) {
+            New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
+            Copy-Item -Recurse $src $dst
+            Write-Host "Copied HLSL_Shaders -> publish/NeelamEngine/HLSL_Shaders"
+          } else {
+            Write-Error "HLSL_Shaders folder not found at $src"
+            exit 1
           }
 
       # Step 6: zip the publish folder. Version is read from .github/version —
@@ -152,6 +218,15 @@ jobs:
           $stray = Get-ChildItem -Path publish -Filter *.dll -File
           if ($stray) {
             Write-Error "Unexpected DLL(s) in publish root: $($stray.Name -join ', ')"
+            exit 1
+          }
+          # Vulkan runtime deps must be present, or the viewport can't render.
+          if (-not (Test-Path "publish/Engine/dxcompiler.dll")) {
+            Write-Error "publish/Engine/dxcompiler.dll missing -- runtime shader compilation would fail."
+            exit 1
+          }
+          if (-not (Get-ChildItem -Path "publish/NeelamEngine/HLSL_Shaders" -Filter *.hlsl -ErrorAction SilentlyContinue)) {
+            Write-Error "No .hlsl files under publish/NeelamEngine/HLSL_Shaders."
             exit 1
           }
           Write-Host "::group::Release layout"
